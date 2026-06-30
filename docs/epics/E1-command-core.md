@@ -25,28 +25,28 @@ To add WiFi later and k/v commands now, parsing/dispatch must be decoupled from 
 
 ## User stories
 
-### S1.1 — Extract the loop into a module
+### S1.1 — Extract the loop into a module ([#8](https://github.com/elaurijssens/gu-multiverse/issues/8))
 *As a developer, I want the command loop in its own translation unit so that `main.cpp` only does setup.*
 **Acceptance criteria**
 - New module (e.g. `src/command/command_core.{hpp,cpp}`) owns the `multiverse:` framing, command read, and dispatch.
 - `main.cpp` calls a single entry point and contains no `if(command == ...)` chains.
 - Behaviour is byte-for-byte identical to today for all existing commands.
 
-### S1.2 — Define a transport interface
+### S1.2 — Define a transport interface ([#9](https://github.com/elaurijssens/gu-multiverse/issues/9))
 *As a developer, I want byte I/O behind an interface so that the same commands can run over USB or WiFi.*
 **Acceptance criteria**
 - A `Transport` interface with at least: read-with-timeout, prefix-wait, and write.
 - A USB CDC implementation wraps the existing `cdc_*` helpers; no behavioural change.
 - The core depends only on the interface, not on TinyUSB directly.
 
-### S1.3 — Command registry / dispatch table
+### S1.3 — Command registry / dispatch table ([#10](https://github.com/elaurijssens/gu-multiverse/issues/10))
 *As a developer, I want commands registered in a table so that adding a command doesn't mean editing a giant if-chain.*
 **Acceptance criteria**
 - Handlers are registered by 4-byte id.
 - Adding a new command is one registration + one handler function.
 - Unknown/garbage command ids are skipped without hanging the loop.
 
-### S1.4 — Migrate existing commands
+### S1.4 — Migrate existing commands ([#11](https://github.com/elaurijssens/gu-multiverse/issues/11))
 *As a user, I want all current commands to keep working after the refactor.*
 **Acceptance criteria**
 - `data`, `zdat`, `note`, `_rst`, `_usb` all behave exactly as before.
