@@ -1,4 +1,5 @@
 #include "display.hpp"
+#include "version.hpp"
 
 using namespace pimoroni;
 
@@ -14,7 +15,14 @@ namespace display {
     void init() {
         hub75.start(dma_complete);
 
-        info("Ready");
+        // Larger panels have room for a version line under the boot message.
+        graphics.set_pen(0, 0, 0);
+        graphics.clear();
+        graphics.set_pen(255, 255, 255);
+        graphics.set_font("bitmap8");
+        graphics.text("Ready", Point(0, 0), WIDTH, 1);
+        graphics.text(MULTIVERSE_VERSION, Point(0, 12), WIDTH, 1);
+        update();
     }
 
     void info(std::string_view text) {

@@ -14,6 +14,18 @@ endif()
 set(NAME ${MULTIVERSE_BOARD}-multiverse)
 set(DISPLAY_PATH ${CMAKE_CURRENT_LIST_DIR}/src/display/${MULTIVERSE_BOARD}/${MULTIVERSE_BOARD}.cmake)
 
+# Firmware version string from git (tag-relative, short hash, +dirty marker).
+execute_process(
+    COMMAND git -C ${CMAKE_CURRENT_LIST_DIR} describe --tags --always --dirty
+    OUTPUT_VARIABLE MULTIVERSE_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+if(NOT MULTIVERSE_VERSION)
+    set(MULTIVERSE_VERSION "unknown")
+endif()
+message("Firmware version: ${MULTIVERSE_VERSION}")
+
 include(pimoroni_pico_import.cmake)
 include(pico_sdk_import.cmake)
 include(zlib_import.cmake)
@@ -50,6 +62,7 @@ target_include_directories(
 target_compile_definitions(
     ${NAME} PRIVATE
     MULTIVERSE_BOARD="${MULTIVERSE_BOARD}"
+    MULTIVERSE_VERSION="${MULTIVERSE_VERSION}"
 )
 
 include(${DISPLAY_PATH})
