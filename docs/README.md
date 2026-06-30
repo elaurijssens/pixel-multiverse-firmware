@@ -38,16 +38,16 @@ We are moving to:
 
 ## Epics
 
-| ID | Epic | Phase | Depends on |
-|----|------|-------|------------|
-| [E1](epics/E1-command-core.md) | Command processing core | 1 (foundation) | — |
-| [E2](epics/E2-kv-store.md) | Key/value configuration store | 1 (foundation) | E1 (for commands) |
-| [E3](epics/E3-runtime-display.md) | Runtime display abstraction | 2 | E2 |
-| [E4](epics/E4-chip-family-builds.md) | Chip-family build consolidation | 2 | E3 |
-| [E5](epics/E5-text-console.md) | Diagnostic text console | 3 | E3 |
-| [E6](epics/E6-double-buffering.md) | Double buffering & multi-board sync | 3 | E3 |
-| [E7](epics/E7-wifi-transport.md) | WiFi transport & multicast sync | 4 | E1, E2, E6 |
-| [E8](epics/E8-firmware-update.md) | Firmware update | 3 → 4 | E1, E4 |
+| ID | Epic | Phase | Depends on | Issue |
+|----|------|-------|------------|-------|
+| [E1](epics/E1-command-core.md) | Command processing core | 1 (foundation) | — | [#1](https://github.com/elaurijssens/gu-multiverse/issues/1) |
+| [E2](epics/E2-kv-store.md) | Key/value configuration store | 1 (foundation) | E1 (for commands) | [#2](https://github.com/elaurijssens/gu-multiverse/issues/2) |
+| [E3](epics/E3-runtime-display.md) | Runtime display abstraction | 2 | E2 | [#3](https://github.com/elaurijssens/gu-multiverse/issues/3) |
+| [E4](epics/E4-chip-family-builds.md) | Chip-family build consolidation | 2 | E3 | [#4](https://github.com/elaurijssens/gu-multiverse/issues/4) |
+| [E5](epics/E5-text-console.md) | Diagnostic text console | 3 | E3 | [#5](https://github.com/elaurijssens/gu-multiverse/issues/5) |
+| [E6](epics/E6-double-buffering.md) | Double buffering & multi-board sync | 3 | E3 | [#6](https://github.com/elaurijssens/gu-multiverse/issues/6) |
+| [E7](epics/E7-wifi-transport.md) | WiFi transport & multicast sync | 4 | E1, E2, E6 | [#7](https://github.com/elaurijssens/gu-multiverse/issues/7) |
+| [E8](epics/E8-firmware-update.md) | Firmware update | 3 → 4 | E1, E4 | [#36](https://github.com/elaurijssens/gu-multiverse/issues/36) |
 
 ### Phasing
 
