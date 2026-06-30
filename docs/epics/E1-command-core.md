@@ -28,9 +28,9 @@ To add WiFi later and k/v commands now, parsing/dispatch must be decoupled from 
 ### S1.1 — Extract the loop into a module ([#8](https://github.com/elaurijssens/gu-multiverse/issues/8))
 *As a developer, I want the command loop in its own translation unit so that `main.cpp` only does setup.*
 **Acceptance criteria**
-- [ ] New module (e.g. `src/command/command_core.{hpp,cpp}`) owns the `multiverse:` framing, command read, and dispatch.
-- [ ] `main.cpp` calls a single entry point and contains no `if(command == ...)` chains.
-- [ ] Behaviour is byte-for-byte identical to today for all existing commands.
+- [x] New module (e.g. `src/command/command_core.{hpp,cpp}`) owns the `multiverse:` framing, command read, and dispatch.
+- [x] `main.cpp` calls a single entry point and contains no `if(command == ...)` chains.
+- [x] Behaviour is byte-for-byte identical to today for all existing commands.
 
 ### S1.2 — Define a transport interface ([#9](https://github.com/elaurijssens/gu-multiverse/issues/9))
 *As a developer, I want byte I/O behind an interface so that the same commands can run over USB or WiFi.*

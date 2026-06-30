@@ -4,7 +4,7 @@
 #include "hub75.hpp"
 
 namespace display {
-    const int WIDTH = 128;
+    const int WIDTH = 256;
     const int HEIGHT = 32;
     const size_t BUFFER_SIZE = WIDTH * HEIGHT * 4;
 

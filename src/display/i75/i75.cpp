@@ -14,7 +14,7 @@ namespace display {
     void init() {
         hub75.start(dma_complete);
 
-        info("rdy");
+        info("Ready");
     }
 
     void info(std::string_view text) {
