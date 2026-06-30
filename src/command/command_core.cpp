@@ -4,19 +4,15 @@
 #include <string_view>
 
 #include "display.hpp"
+#include "pico/stdlib.h"
 #include "pico/bootrom.h"
+#include "hardware/sync.h"
 #include "hardware/structs/rosc.h"
 #include "hardware/watchdog.h"
-#include "pico/timeout_helper.h"
 #include "zlib.h"
 
-#include "bsp/board.h"
-#include "tusb.h"
-
-#include "cdc_uart.h"
-#include "get_serial.h"
-
 #include "command/command_core.hpp"
+#include "command/transport.hpp"
 
 using namespace pimoroni;
 
@@ -28,53 +24,17 @@ std::string_view command((const char *)command_buffer, COMMAND_LEN);
 
 //uint16_t audio_buffer[22050] = {0};
 
-bool cdc_wait_for(std::string_view data, uint timeout_ms=1000) {
-    timeout_state ts;
-    absolute_time_t until = delayed_by_ms(get_absolute_time(), timeout_ms);
-    check_timeout_fn check_timeout = init_single_timeout_until(&ts, until);
-
-    for(auto expected_char : data) {
-        char got_char;
-        while(1){
-            tud_task();
-            if (cdc_task((uint8_t *)&got_char, 1) == 1) break;
-            if(check_timeout(&ts, until)) return false;
-        }
-        if (got_char != expected_char) return false;
-    }
-    return true;
-}
-
-size_t cdc_get_bytes(const uint8_t *buffer, const size_t len, const uint timeout_ms=1000) {
-    memset((void *)buffer, 0, len);
-
-    uint8_t *p = (uint8_t *)buffer;
-
-    timeout_state ts;
-    absolute_time_t until = delayed_by_ms(get_absolute_time(), timeout_ms);
-    check_timeout_fn check_timeout = init_single_timeout_until(&ts, until);
-
-    size_t bytes_remaining = len;
-    while (bytes_remaining && !check_timeout(&ts, until)) {
-        tud_task(); // tinyusb device task
-        size_t bytes_read = cdc_task(p, std::min(bytes_remaining, MAX_UART_PACKET));
-        bytes_remaining -= bytes_read;
-        p += bytes_read;
-    }
-    return len - bytes_remaining;
-}
-
-uint16_t cdc_get_data_uint16() {
+uint16_t get_data_uint16(command_core::Transport& transport) {
     uint16_t len;
-    tud_task();
-    cdc_get_bytes((uint8_t *)&len, 2);
+    transport.poll();
+    transport.read((uint8_t *)&len, 2);
     return len;
 }
 
-uint8_t cdc_get_data_uint8() {
+uint8_t get_data_uint8(command_core::Transport& transport) {
     uint8_t len;
-    tud_task();
-    cdc_get_bytes((uint8_t *)&len, 1);
+    transport.poll();
+    transport.read((uint8_t *)&len, 1);
     return len;
 }
 
@@ -82,22 +42,22 @@ uint8_t cdc_get_data_uint8() {
 
 namespace command_core {
 
-void run() {
+void run(Transport& transport) {
     while (1) {
-        tud_task();
+        transport.poll();
 
-        if(!cdc_wait_for("multiverse:")) {
+        if(!transport.wait_for("multiverse:")) {
             //display::info("mto");
             continue; // Couldn't get 16 bytes of command
         }
 
-        if(cdc_get_bytes(command_buffer, COMMAND_LEN) != COMMAND_LEN) {
+        if(transport.read(command_buffer, COMMAND_LEN) != COMMAND_LEN) {
             //display::info("cto");
             continue;
         }
 
         if(command == "data") {
-            if (cdc_get_bytes(display::buffer, display::BUFFER_SIZE) == display::BUFFER_SIZE) {
+            if (transport.read(display::buffer, display::BUFFER_SIZE) == display::BUFFER_SIZE) {
                 display::update();
             }
             continue;
@@ -106,7 +66,7 @@ void run() {
         if(command == "zdat") {
             // Read the size of the compressed data (4 bytes)
             uint32_t compressed_size;
-            if (cdc_get_bytes((uint8_t*)&compressed_size, sizeof(compressed_size)) != sizeof(compressed_size)) {
+            if (transport.read((uint8_t*)&compressed_size, sizeof(compressed_size)) != sizeof(compressed_size)) {
                 // Error handling: failed to read compressed size
                 display::info("nosize");
                 continue;
@@ -127,7 +87,7 @@ void run() {
             }
 
             // Read the compressed data
-            if (cdc_get_bytes(compressed_data, compressed_size) != compressed_size) {
+            if (transport.read(compressed_data, compressed_size) != compressed_size) {
                 // Error handling: failed to read compressed data
                 free(compressed_data);
                 continue;
@@ -158,25 +118,25 @@ void run() {
         }
 
         /*if(command == "wave") {
-            uint16_t audio_len = cdc_get_data_uint16();
-            if (cdc_get_bytes((uint8_t *)audio_buffer, audio_len) == audio_len) {
+            uint16_t audio_len = get_data_uint16(transport);
+            if (transport.read((uint8_t *)audio_buffer, audio_len) == audio_len) {
                 display::play_audio((uint8_t *)audio_buffer, audio_len / 2);
             }
             continue;
         }*/
 
         if(command == "note") {
-            uint8_t channel = cdc_get_data_uint8();
-            uint16_t freq = cdc_get_data_uint16();
+            uint8_t channel = get_data_uint8(transport);
+            uint16_t freq = get_data_uint16(transport);
 
-            uint8_t waveform = cdc_get_data_uint8();
+            uint8_t waveform = get_data_uint8(transport);
 
-            uint16_t a = cdc_get_data_uint16();
-            uint16_t d = cdc_get_data_uint16();
-            uint16_t s = cdc_get_data_uint16();
-            uint16_t r = cdc_get_data_uint16();
+            uint16_t a = get_data_uint16(transport);
+            uint16_t d = get_data_uint16(transport);
+            uint16_t s = get_data_uint16(transport);
+            uint16_t r = get_data_uint16(transport);
 
-            uint8_t phase = cdc_get_data_uint8();
+            uint8_t phase = get_data_uint8(transport);
 
             display::play_note(channel, freq, waveform, a, d, s, r, phase);
             //display::info("note");

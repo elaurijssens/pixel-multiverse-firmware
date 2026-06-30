@@ -35,9 +35,9 @@ To add WiFi later and k/v commands now, parsing/dispatch must be decoupled from 
 ### S1.2 — Define a transport interface ([#9](https://github.com/elaurijssens/gu-multiverse/issues/9))
 *As a developer, I want byte I/O behind an interface so that the same commands can run over USB or WiFi.*
 **Acceptance criteria**
-- [ ] A `Transport` interface with at least: read-with-timeout, prefix-wait, and write.
-- [ ] A USB CDC implementation wraps the existing `cdc_*` helpers; no behavioural change.
-- [ ] The core depends only on the interface, not on TinyUSB directly.
+- [x] A `Transport` interface with at least: read-with-timeout, prefix-wait, and write.
+- [x] A USB CDC implementation wraps the existing `cdc_*` helpers; no behavioural change.
+- [x] The core depends only on the interface, not on TinyUSB directly.
 
 ### S1.3 — Command registry / dispatch table ([#10](https://github.com/elaurijssens/gu-multiverse/issues/10))
 *As a developer, I want commands registered in a table so that adding a command doesn't mean editing a giant if-chain.*

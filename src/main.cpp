@@ -31,6 +31,7 @@
 #include "get_serial.h"
 
 #include "command/command_core.hpp"
+#include "command/usb_cdc_transport.hpp"
 
 // UART0 for Picoprobe debug
 // UART1 for picoprobe to target device
@@ -45,7 +46,8 @@ int main(void) {
 
     display::init();
 
-    command_core::run();
+    command_core::UsbCdcTransport transport;
+    command_core::run(transport);
 
     return 0;
 }
