@@ -25,28 +25,28 @@ Two things motivate a dedicated epic:
 
 ## User stories
 
-### S8.1 — Dedicated "enter firmware update mode" command
+### S8.1 — Dedicated "enter firmware update mode" command ([#37](https://github.com/elaurijssens/gu-multiverse/issues/37))
 *As a board owner, I want a clear command that puts the board into firmware upload mode so that I can flash a new image over USB without finding the BOOTSEL button.*
 **Acceptance criteria**
 - The existing `_usb` behaviour (`reset_usb_boot(0, 0)`) is ported into the E1 command core as a named system handler.
 - The display shows an unambiguous "firmware update" state before the chip reboots into the bootloader.
 - Behaviour on both chip families (RP2040, RP2350) is verified to land in BOOTSEL/UF2 mode.
 
-### S8.2 — Report firmware identity & version
+### S8.2 — Report firmware identity & version ([#38](https://github.com/elaurijssens/gu-multiverse/issues/38))
 *As host tooling, I want to query the board's chip family, board type, and firmware build id so that I can select the correct UF2 and avoid flashing the wrong image.*
 **Acceptance criteria**
 - A command returns at least: chip family (RP2040/RP2350), board type (from the E2 k/v store), and a firmware build/version id.
 - The build id is derived at compile time (e.g. git describe / version constant) and is stable per build.
 - Output format is documented for host-side consumption.
 
-### S8.3 — Host-side update flow & tooling docs
+### S8.3 — Host-side update flow & tooling docs ([#39](https://github.com/elaurijssens/gu-multiverse/issues/39))
 *As a board owner, I want a documented, scripted flow so that updating is "run this and follow the prompt", not a manual UF2 hunt.*
 **Acceptance criteria**
 - Docs describe: query identity → choose chip-family UF2 → enter update mode → copy UF2.
 - A reference host script (or extension of existing host tooling) automates the steps where the OS allows mounting the RPI-RP2 drive.
 - The wrong-family case is called out (ROM rejects a mismatched UF2 family id) with the friendly pre-flight check from S8.2.
 
-### S8.4 — Embedded over-the-wire update (provisional, Phase 4)
+### S8.4 — Embedded over-the-wire update (provisional, Phase 4) ([#40](https://github.com/elaurijssens/gu-multiverse/issues/40))
 *As the owner of a hard-to-reach or networked board, I want to push a new image over the transport so that I never need physical access to BOOTSEL.*
 **Acceptance criteria**
 - A spike decides the flash layout (single vs A/B / second region) and the apply mechanism for each chip family.
