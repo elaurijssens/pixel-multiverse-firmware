@@ -42,22 +42,22 @@ Pimoroni driver.
 ### S4.1 — Family-driven CMake ([#22](https://github.com/elaurijssens/gu-multiverse/issues/22))
 *As a developer, I want to build by chip family so I get two images, not four.*
 **Acceptance criteria**
-- A single selector picks `rp2040` or `rp2350` and sets the correct SDK platform.
-- Each image links all drivers for its family.
-- `MULTIVERSE_BOARD` is removed (or aliased with a deprecation note).
+- [ ] A single selector picks `rp2040` or `rp2350` and sets the correct SDK platform.
+- [ ] Each image links all drivers for its family.
+- [ ] `MULTIVERSE_BOARD` is removed (or aliased with a deprecation note).
 
 ### S4.2 — Driver coexistence ([#23](https://github.com/elaurijssens/gu-multiverse/issues/23))
 *As the firmware, I want multiple drivers linked in one image without conflict.*
 **Acceptance criteria**
-- Multiple `<board>.cmake` driver sets merge into one image cleanly (no duplicate-symbol/ISR clashes).
-- The unified display layer (E3) picks the active driver at runtime.
+- [ ] Multiple `<board>.cmake` driver sets merge into one image cleanly (no duplicate-symbol/ISR clashes).
+- [ ] The unified display layer (E3) picks the active driver at runtime.
 
 ### S4.3 — CI builds both images ([#24](https://github.com/elaurijssens/gu-multiverse/issues/24))
 *As a maintainer, I want CI to produce both UF2s.*
 **Acceptance criteria**
-- CI matrix builds `rp2040` and `rp2350`.
-- Release packaging (`install(...)`/CPack) emits both UF2s with clear names.
-- README/install docs updated for the two-image model.
+- [ ] CI matrix builds `rp2040` and `rp2350`.
+- [ ] Release packaging (`install(...)`/CPack) emits both UF2s with clear names.
+- [ ] README/install docs updated for the two-image model.
 
 ## Technical notes
 

@@ -53,37 +53,37 @@ Proposed 4-byte ids (finalise in S2.2):
 ### S2.1 — Define the record format ([#12](https://github.com/elaurijssens/gu-multiverse/issues/12))
 *As a developer, I want a fixed on-flash record layout so reads/writes are simple and forward-compatible.*
 **Acceptance criteria**
-- Record layout documented (key width, value width, padding, total size, endianness if any).
-- Power-of-two alignment decision made and recorded with rationale.
-- A magic/version marker exists at the head of the region so future format changes are detectable.
+- [ ] Record layout documented (key width, value width, padding, total size, endianness if any).
+- [ ] Power-of-two alignment decision made and recorded with rationale.
+- [ ] A magic/version marker exists at the head of the region so future format changes are detectable.
 
 ### S2.2 — In-RAM store API ([#13](https://github.com/elaurijssens/gu-multiverse/issues/13))
 *As a developer, I want a clean `put/get/del/iterate` API so the rest of the firmware reads config without touching flash directly.*
 **Acceptance criteria**
-- Header exposes `put(key, value)`, `get(key) -> value?`, `del(key)`, and iteration.
-- Keys are normalised (space-padded/truncated to 8) consistently in one place.
-- Unit-testable on host where feasible (logic separated from flash I/O).
+- [ ] Header exposes `put(key, value)`, `get(key) -> value?`, `del(key)`, and iteration.
+- [ ] Keys are normalised (space-padded/truncated to 8) consistently in one place.
+- [ ] Unit-testable on host where feasible (logic separated from flash I/O).
 
 ### S2.3 — Flash persistence ([#14](https://github.com/elaurijssens/gu-multiverse/issues/14))
 *As a user, I want my configuration to survive power cycles.*
 **Acceptance criteria**
-- Store loads from flash at boot and persists changes.
-- Reserved flash region does not overlap the program image (verified via linker/map).
-- Interrupt/second-core safety for writes implemented per SDK rules.
-- Power-loss during write does not brick the device (at minimum: corrupt store falls back to empty/defaults).
+- [ ] Store loads from flash at boot and persists changes.
+- [ ] Reserved flash region does not overlap the program image (verified via linker/map).
+- [ ] Interrupt/second-core safety for writes implemented per SDK rules.
+- [ ] Power-loss during write does not brick the device (at minimum: corrupt store falls back to empty/defaults).
 
 ### S2.4 — `put`/`get`/`del` commands ([#15](https://github.com/elaurijssens/gu-multiverse/issues/15))
 *As a host, I want to read and write config over the existing transport.*
 **Acceptance criteria**
-- The three commands are registered with the E1 core and round-trip correctly.
-- `get` of a missing key returns a clear not-found response.
-- Host-side helper/example demonstrates setting and reading a key.
+- [ ] The three commands are registered with the E1 core and round-trip correctly.
+- [ ] `get` of a missing key returns a clear not-found response.
+- [ ] Host-side helper/example demonstrates setting and reading a key.
 
 ### S2.5 — Well-known keys catalogue ([#16](https://github.com/elaurijssens/gu-multiverse/issues/16))
 *As a developer, I want a documented set of reserved keys so config is consistent across boards.*
 **Acceptance criteria**
-- A table of reserved keys is documented (e.g. `board`, `width`, `height`, `wifi`, …) with value encodings.
-- Defaults are defined for when a key is absent.
+- [ ] A table of reserved keys is documented (e.g. `board`, `width`, `height`, `wifi`, …) with value encodings.
+- [ ] Defaults are defined for when a key is absent.
 
 ## Out of scope
 

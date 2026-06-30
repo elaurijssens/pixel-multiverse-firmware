@@ -62,9 +62,15 @@ Phase 4 (networking):   E7  (needs E1, E2, E6)   E8 (embedded update, provisiona
 ## How we work
 
 - Each epic file lists **user stories** with acceptance criteria. Stories are the
-  unit of work.
-- Progress is tracked on a GitHub Project board (to be set up; see the epic
-  files as the source of truth until then).
+  unit of work, and each has a GitHub issue (linked in the tables above).
+- Progress is tracked on the
+  [Multiverse Firmware Roadmap](https://github.com/users/elaurijssens/projects/1)
+  GitHub Project board (epics carry a **Phase** field; stories roll up to their
+  parent epic).
+- **Acceptance criteria are checkboxes.** While working a story, tick each
+  criterion on its issue as it is actually met (verified, not assumed). A story
+  may only be **closed when every acceptance-criteria box is checked** — an
+  unchecked box means the story is not done.
 - Keep this `docs/` tree in sync with reality — when an approach changes, update
   the epic, don't leave it stale.
 
