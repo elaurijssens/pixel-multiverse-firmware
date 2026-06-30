@@ -23,8 +23,8 @@ renders them.
 
 CMake + the Raspberry Pi Pico SDK, one image **per board** selected at compile
 time via the `MULTIVERSE_BOARD` env var (`galactic` default; also `cosmic`,
-`stellar`, `i75`). Requires `PICO_SDK_PATH` (here:
-`/Users/elaurijssens/emma/pico/pico-sdk`). Output is `${board}-multiverse.uf2`.
+`stellar`, `i75`). Set `PICO_SDK_PATH` to your local pico-sdk checkout. Output
+is `${board}-multiverse.uf2`.
 
 ```bash
 MULTIVERSE_BOARD=galactic cmake -DPICO_SDK_PATH="$PICO_SDK_PATH" -G Ninja -S . -B cmake-build-debug
