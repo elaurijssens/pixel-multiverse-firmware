@@ -47,6 +47,7 @@ We are moving to:
 | [E5](epics/E5-text-console.md) | Diagnostic text console | 3 | E3 |
 | [E6](epics/E6-double-buffering.md) | Double buffering & multi-board sync | 3 | E3 |
 | [E7](epics/E7-wifi-transport.md) | WiFi transport & multicast sync | 4 | E1, E2, E6 |
+| [E8](epics/E8-firmware-update.md) | Firmware update | 3 → 4 | E1, E4 |
 
 ### Phasing
 
@@ -54,8 +55,8 @@ We are moving to:
 Phase 1 (foundation):   E1 ──┐        E2
                              │         │
 Phase 2 (two images):        E3 ◄──────┘   →   E4
-Phase 3 (features):     E5,  E6
-Phase 4 (networking):   E7  (needs E1, E2, E6)
+Phase 3 (features):     E5,  E6,  E8 (update mode; needs E1, E4)
+Phase 4 (networking):   E7  (needs E1, E2, E6)   E8 (embedded update, provisional)
 ```
 
 ## How we work
