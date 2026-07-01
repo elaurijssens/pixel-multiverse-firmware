@@ -20,14 +20,19 @@ holds the WiFi enable flag (E7).
 
 - **Key:** 8 bytes, alphanumeric, **space-padded** if shorter.
 - **Value:** 64 bytes, **untyped** (raw bytes). Interpretation is the caller's job.
-- **Record:** **128 bytes** = key(8) + value(64) + **reserved(56)**. 128 is the
-  smallest power of two that fits the 8+64 payload; the reserved bytes leave room
-  for future per-record metadata (valid/tombstone flag, CRC, key length) without
-  changing the record size or reformatting. Power-of-two records keep offset math
-  trivial (`record N` at `RECORD_SIZE*(N+1)`) and pack evenly into the 4 KB erase
-  sector (**header + 31 records per sector**).
+- **Record:** **128 bytes** = key(8) + value(64) + **crc32(4)** + **reserved(52)**.
+  128 is the smallest power of two that fits the 8+64 payload; the crc + reserved
+  bytes leave room for per-record metadata without changing the record size or
+  reformatting. Power-of-two records keep offset math trivial (`record N` at
+  `RECORD_SIZE*(N+1)`) and pack evenly into the 4 KB erase sector (**header + 31
+  records per sector**).
+- **Integrity:** each record carries a **CRC-32** (IEEE 802.3, zlib-compatible —
+  zlib's `crc32()` is already linked) over its key + value; the header carries one
+  over its leading 8 bytes. A record is valid only if `key[0]` is alphanumeric and
+  the CRC matches — so a write interrupted by power loss fails its CRC and is
+  ignored rather than returning garbage.
 - **Region header:** occupies slot 0 (first 128 bytes) — `magic "MVKV"` +
-  `version(u16)` + `record_size(u16)` + reserved. Detects an
+  `version(u16)` + `record_size(u16)` + `crc32(u32)` + reserved. Detects an
   uninitialised/foreign region and gates future format changes.
 - **Slot sentinels (`key[0]`):** `0xFF` = erased/empty (fresh flash), `0x00` =
   tombstone (deleted). Valid keys are alphanumeric, so neither collides; deletion
