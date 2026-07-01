@@ -24,6 +24,11 @@
 // that the buffer layout is wrong.
 namespace display_selftest {
 
+// Test 41 renders the board's real info() screen rather than a buffer pattern,
+// so it is handled by the per-board selftest() wrapper (info() is board-specific
+// — font and layout differ per board) instead of by render() below.
+inline constexpr uint8_t INFO_SCREEN = 41;
+
 // Fill an inclusive column span of the whole height with the current pen.
 inline void fill_column(pimoroni::PicoGraphics& g, int x, int height) {
     for (int y = 0; y < height; y++) g.pixel(pimoroni::Point(x, y));
@@ -138,12 +143,8 @@ inline void render(pimoroni::PicoGraphics& g, int width, int height, uint8_t id)
             }
             break;
         }
-        case 41:  // sample of the info()/boot text screen (white on black)
-            g.set_pen(255, 255, 255);
-            g.set_font("bitmap8");
-            g.text("info screen", Point(0, 0), width, 1.0f);
-            g.text("multiverse", Point(0, 12), width, 1.0f);
-            break;
+        // 41 (INFO_SCREEN) is intentionally not drawn here — the board's
+        // selftest() wrapper renders the real info() screen for it.
 
         // ---- 5x: grid / addressing -------------------------------------
         case 50: {  // number each 16x16 tile; distinct hue + contrasting text

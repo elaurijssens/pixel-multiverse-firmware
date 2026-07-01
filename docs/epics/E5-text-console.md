@@ -50,6 +50,18 @@ valuable for debugging the runtime-config model from E2/E3 in the field.
 - [ ] On boot (or on demand), the console can show board type, dimensions, WiFi state from the k/v store.
 - [ ] Replaces/augments the current `"rdy"` message.
 
+### S5.5 — Size-adaptive info/status self-test (line-by-line + marquee) ([#41](https://github.com/elaurijssens/gu-multiverse/issues/41)) · low priority
+*As a board owner, I want the info/status self-test to adapt to any panel size — stacking fields line-by-line on tall panels and marquee-scrolling on tiny ones (e.g. Stellar 16×16) — so the same boot/status screen works on every board.*
+**Acceptance criteria**
+- [ ] The info self-test renders its fields (firmware version today; board type, dimensions, IP/WiFi later) as multiple lines on panels tall enough to fit them.
+- [ ] On panels too small for the content (e.g. 16×16 Stellar), it marquee-scrolls the info rather than truncating.
+- [ ] Implemented board-agnostically in the shared self-test renderer, replacing the current per-board `selftest()` stubs (galactic/cosmic/stellar) with real output.
+- [ ] Used as the boot screen on all boards (i75 already does this).
+
+Context: the info self-test is pattern `41` (`src/display/selftest.hpp` +
+`INFO_SCREEN`); on i75 the boot screen already calls it. Overlaps with S5.4 and
+should share the console's wrapping/scrolling once that lands.
+
 ## Technical notes
 
 - Fonts available: bitmap5 (Unicorns), bitmap8 (i75), plus hershey fonts are

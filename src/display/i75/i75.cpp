@@ -16,14 +16,8 @@ namespace display {
     void init() {
         hub75.start(dma_complete);
 
-        // Larger panels have room for a version line under the boot message.
-        graphics.set_pen(0, 0, 0);
-        graphics.clear();
-        graphics.set_pen(255, 255, 255);
-        graphics.set_font("bitmap8");
-        graphics.text("Ready", Point(0, 0), WIDTH, 1);
-        graphics.text(MULTIVERSE_VERSION, Point(0, 12), WIDTH, 1);
-        update();
+        // Boot screen is the info self-test (currently the firmware version).
+        selftest(display_selftest::INFO_SCREEN);
     }
 
     void info(std::string_view text) {
@@ -40,6 +34,12 @@ namespace display {
     }
 
     void selftest(uint8_t test_id) {
+        // Test 41 shows the real info() screen; everything else is a pattern
+        // drawn straight into the framebuffer.
+        if (test_id == display_selftest::INFO_SCREEN) {
+            info(MULTIVERSE_VERSION);
+            return;
+        }
         display_selftest::render(graphics, WIDTH, HEIGHT, test_id);
         update();
     }
