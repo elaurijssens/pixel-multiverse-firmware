@@ -51,7 +51,7 @@ To add WiFi later and k/v commands now, parsing/dispatch must be decoupled from 
 **Acceptance criteria**
 - [x] `data`, `zdat`, `note`, `_rst`, `_usb` all behave exactly as before (handler bodies extracted verbatim in S1.3; each verified on i75w hardware).
 - [x] The commented-out `wave` command is **dropped** — no host tooling ever sent it and `note` covers synth audio; `display::play_audio()` stays in the API for a future re-add.
-- [x] Manual smoke test passes — run via `tools/multiverse-ctl.sh` (`data`/`zdat`/`test`/`note`/`_rst`/`_usb`) rather than the bundled `examples/*.py`, which don't fit this fork/board (see Technical notes).
+- [x] Manual smoke test passes — run via `tools/multiverse-ctl.sh` (`data`/`zdat`/`test`/`note`/`_rst`/`_usb`); the bundled `examples/*.py` target the MicroPython firmware, not this fork (see Technical notes, [#42](https://github.com/elaurijssens/gu-multiverse/issues/42)).
 
 ## Technical notes
 
@@ -59,7 +59,13 @@ To add WiFi later and k/v commands now, parsing/dispatch must be decoupled from 
 - The framing prefix `multiverse:` stays for USB; revisit framing for WiFi in E7 (datagram boundaries may replace the prefix).
 - `_rst`/`_usb` touch `rosc`, watchdog, and `reset_usb_boot` — keep these as handlers but they may live in a small "system" command group.
 - Watch the timeout helpers (`init_single_timeout_until`, `check_timeout_fn`) — these changed in SDK 2.0 (see commit `0c997a1`); keep them encapsulated in the USB transport.
-- **Host-lib divergence:** the bundled `examples/*.py` couldn't drive the S1.4 smoke test on the i75w — they hardcode other boards' `serial-by-id` paths, and the HUB75 ones use the host lib's `MODE_HUB75`, which packs the **old 10-bit interleaved framebuffer**. This fork's i75 renders through PicoGraphics `PenRGB888` (plain `data`/`zdat`, byte order `B,G,R,0`), so that path is incompatible. Updating `lib/multiverse` + examples to the fork's format is worth its own (host-side) story.
+- **Host tooling:** the bundled `examples/*.py` + `lib/multiverse` target the
+  **MicroPython** Multiverse firmware and its pixel format — they don't drive this
+  C++ firmware, which renders through PicoGraphics `PenRGB888` (plain `data`/`zdat`,
+  byte order `B,G,R,0`). Host tooling for this firmware lives in `tools/`
+  (`multiverse-ctl.sh`, `multiverse-image.py`), which is what the S1.4 smoke test
+  used. Growing that into a native client/demo set is tracked by
+  [#42](https://github.com/elaurijssens/gu-multiverse/issues/42) (backlog).
 
 ## Out of scope
 
