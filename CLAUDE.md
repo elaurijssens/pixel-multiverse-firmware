@@ -39,13 +39,39 @@ changes live in the USB code — keep them encapsulated.
 
 The firmware waits for the literal prefix `multiverse:` then reads a **4-byte**
 command (`src/main.cpp`). Current commands: `data`, `zdat` (zlib), `note`,
-`_rst` (watchdog reboot), `_usb` (`reset_usb_boot` → BOOTSEL/UF2 mode). Keep
-command ids 4 bytes for wire compatibility with existing host tooling.
+`test` (two ASCII digits `00`–`99` select a self-test pattern — see
+`src/display/selftest.hpp`), `_rst` (watchdog reboot), `_usb`
+(`reset_usb_boot` → BOOTSEL/UF2 mode). Keep command ids 4 bytes for wire
+compatibility with existing host tooling.
 
-`tools/multiverse-mode.sh reset|usb|list` sends `_rst`/`_usb` and auto-detects
-the serial port. **macOS gotcha:** write to the `/dev/cu.usbmodem*` (call-out)
-device, never `/dev/tty.*` (dial-in) — the tty twin blocks on carrier-detect and
-fails with `ENXIO`.
+`tools/multiverse-ctl.sh reset|usb|test|data|zdat|flash|list` sends control
+commands and auto-detects the serial port. `data`/`zdat` send an image
+(png/jpg/gif/webp) uncompressed / zlib-compressed via `tools/multiverse-image.py`
+(needs Pillow); that helper packs pixels into the firmware's `PenRGB888` byte
+order (little-endian `B,G,R,0` per pixel — **not** RGBA). **macOS gotcha:** write
+to the `/dev/cu.usbmodem*` (call-out) device, never `/dev/tty.*` (dial-in) — the
+tty twin blocks on carrier-detect and fails with `ENXIO`.
+
+## Shipping a change (bench "CI/CD")
+
+There is no CI/CD pipeline. **After finishing a story, fixing a bug, or landing
+an out-of-band feature, deploy and verify on real hardware** via
+`tools/multiverse-ctl.sh`:
+
+1. If the change adds a board-controllable behaviour, expose it as a
+   `multiverse-ctl.sh` subcommand (a new 4-byte wire command + a case in the
+   tool) so it can be exercised from the host.
+2. Run `tools/multiverse-ctl.sh flash [NN]` (needs `PICO_SDK_PATH`;
+   `MV_BUILD_DIR` selects the build tree, default `cmake-build-debug-rp2350`).
+   It reconfigures + builds, archives a **version-stamped** copy of the image
+   under `dist/` named from `MULTIVERSE_VERSION` (`git describe`), drops the
+   board into BOOTSEL, **polls for the UF2 drive to mount and be ready** before
+   copying (the mount takes a moment), then runs self-test pattern `NN`
+   (default `20`) once the board re-enumerates to confirm it came back healthy.
+
+Do the individual steps by hand only when `flash` can't (e.g. a board with no
+`dist/`-style build tree yet); the sequence is build → version-stamped copy →
+`_usb` → wait-for-mount → copy `.uf2` → run a self-test.
 
 ## Roadmap & how we work
 

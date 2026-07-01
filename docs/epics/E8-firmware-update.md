@@ -36,8 +36,19 @@ Two things motivate a dedicated epic:
 *As host tooling, I want to query the board's chip family, board type, and firmware build id so that I can select the correct UF2 and avoid flashing the wrong image.*
 **Acceptance criteria**
 - [ ] A command returns at least: chip family (RP2040/RP2350), board type (from the E2 k/v store), and a firmware build/version id.
-- [ ] The build id is derived at compile time (e.g. git describe / version constant) and is stable per build.
+- [x] The build id is derived at compile time (e.g. git describe / version constant) and is stable per build.
 - [ ] Output format is documented for host-side consumption.
+
+**Groundwork done** (side-step, commit `16264d7`): the build id already exists.
+`CMakeLists.txt` derives it from `git describe --tags --always --dirty` and
+passes it as the `MULTIVERSE_VERSION` compile definition (alongside
+`MULTIVERSE_BOARD`); `src/version.hpp` exposes both as `multiverse::VERSION` /
+`multiverse::BOARD` with fallbacks. The i75 boot screen renders it under
+"Ready". What remains for this story: the **command** that returns
+identity over the transport, the **chip family** + **board type** (board type
+needs E2's k/v store), and a **documented output format**. Note the version is
+captured at CMake *configure* time, not every build — revisit if a
+regenerate-per-build guarantee is needed for "stable per build".
 
 ### S8.3 — Host-side update flow & tooling docs ([#39](https://github.com/elaurijssens/gu-multiverse/issues/39))
 *As a board owner, I want a documented, scripted flow so that updating is "run this and follow the prompt", not a manual UF2 hunt.*
@@ -57,6 +68,7 @@ Two things motivate a dedicated epic:
 
 - `reset_usb_boot` and the `rosc`/`save_and_disable_interrupts` dance mirror `_rst`/`_usb` exactly — keep them in the same system command group E1 introduces; don't duplicate the reboot sequence.
 - UF2 **family ids** differ per chip (`RP2040` vs `RP2350` / ARM-S / RISC-V). Identity reporting (S8.2) must match what E4's two images are built as.
+- The build id and board name already exist at compile time in `src/version.hpp` (`MULTIVERSE_VERSION` / `MULTIVERSE_BOARD`); S8.2's command should report these rather than re-derive them.
 - RP2350 has secure-boot / signed-image facilities the RP2040 lacks; the embedded path (S8.4) should note this divergence rather than assume one mechanism.
 - Streaming an image over USB CDC reuses the E1 transport; over WiFi (E7) it reuses the same core but must handle datagram loss/ordering for the firmware payload.
 - Don't invent a bespoke embedded-update scheme before the S8.4 spike — prefer the SDK/ROM-supported path where one exists.
