@@ -11,28 +11,35 @@
 // erase sector therefore holds the header plus 31 records.
 //
 // Sizing rationale (S2.1 decision): 128 is the smallest power of two that holds
-// an 8-byte key + 64-byte value, leaving room for per-record metadata — a CRC-32
-// and 52 reserved bytes for future use (valid/tombstone flag, key length, ...) —
-// that can grow without changing the record size or reformatting the store.
-// Power-of-two records keep offset math trivial and pack evenly into the 4 KB
-// erase sector.
+// an 8-byte key + 64-byte value with room for per-record metadata. Power-of-two
+// records keep offset math trivial and pack evenly into the 4 KB erase sector.
 //
-// Integrity: each record and the header carry a CRC-32 (IEEE 802.3, zlib-
-// compatible — the firmware already links zlib's crc32()) over their leading
-// fields. This detects bit-rot and gives power-loss atomicity: a record whose
-// write was interrupted fails its CRC and is treated as invalid rather than
-// silently returning garbage.
+// Integrity: the last 4 bytes of every slot are a CRC-32 (IEEE 802.3, zlib-
+// compatible — the firmware already links zlib's crc32()) over the preceding
+// CRC_COVERAGE (124) bytes, i.e. the whole slot except the CRC word itself. So
+// the key, value, the length fields, and any future metadata placed in `reserved`
+// are all covered automatically. This detects bit-rot and gives power-loss atomicity: a
+// record whose write was interrupted fails its CRC and is treated as invalid
+// rather than silently returning garbage.
 //
 // Values are untyped raw bytes — interpretation is the caller's job (typed values
 // are out of scope for E2). Multi-byte fields are little-endian (device native on
 // RP2040/RP2350).
 namespace kv {
 
-constexpr size_t KEY_LEN      = 8;    // alphanumeric, space-padded if shorter
-constexpr size_t VALUE_LEN    = 64;   // untyped raw bytes
-constexpr size_t CRC_LEN      = 4;    // CRC-32 over key + value
-constexpr size_t RESERVED_LEN = 52;   // future per-record metadata; zero today
-constexpr size_t RECORD_SIZE  = 128;  // KEY_LEN + VALUE_LEN + CRC_LEN + RESERVED_LEN
+constexpr size_t KEY_LEN     = 8;    // key field width; content is alphanumeric, space-padded
+constexpr size_t VALUE_LEN   = 64;   // untyped raw bytes
+constexpr size_t CRC_LEN     = 4;    // trailing CRC-32
+constexpr size_t RECORD_SIZE = 128;
+
+// The CRC covers everything in the slot except its own trailing word.
+constexpr size_t CRC_COVERAGE = RECORD_SIZE - CRC_LEN;  // 124
+
+// Per-record reserved metadata (after the length fields, before the CRC);
+// CRC-covered. New fields can be carved from here later without moving key,
+// value, the length fields, or the trailing CRC.
+constexpr size_t RESERVED_LEN =
+    RECORD_SIZE - KEY_LEN - VALUE_LEN - 1 /*key_len*/ - 1 /*value_len*/ - CRC_LEN;  // 50
 
 constexpr uint16_t FORMAT_VERSION = 1;
 constexpr char     MAGIC[4]       = {'M', 'V', 'K', 'V'};
@@ -44,28 +51,33 @@ constexpr uint8_t SLOT_ERASED    = 0xFF;  // fresh/empty slot
 constexpr uint8_t SLOT_TOMBSTONE = 0x00;  // deleted record
 
 // Region header, occupying slot 0 (the first RECORD_SIZE bytes of the region).
-// `crc32` covers magic + version + record_size (the leading 8 bytes).
 struct Header {
     char     magic[4];       // MAGIC — identifies the store
     uint16_t version;        // FORMAT_VERSION — gates future format changes
     uint16_t record_size;    // RECORD_SIZE — lets a reader sanity-check layout
-    uint32_t crc32;          // CRC-32 of the leading 8 bytes
-    uint8_t  reserved[RECORD_SIZE - 12];
+    uint8_t  reserved[RECORD_SIZE - 8 - CRC_LEN];
+    uint32_t crc32;          // CRC-32 over the preceding CRC_COVERAGE bytes
 };
-static_assert(offsetof(Header, crc32) == 8, "kv::Header.crc32 must follow the 8-byte preamble");
+static_assert(offsetof(Header, crc32) == CRC_COVERAGE, "kv::Header.crc32 must be the trailing word");
 static_assert(sizeof(Header) == RECORD_SIZE, "kv::Header must be one record slot");
 
 // A single key/value record. A slot is empty when key[0] == SLOT_ERASED and
-// deleted when key[0] == SLOT_TOMBSTONE; otherwise it is valid only if `crc32`
-// matches CRC-32 over key + value.
+// deleted when key[0] == SLOT_TOMBSTONE; otherwise it is valid only if crc32
+// matches CRC-32 over the leading CRC_COVERAGE bytes. `key_len`/`value_len` give
+// the number of significant key/value bytes, disambiguating real content from
+// padding (keys) or unused tail (values).
 struct Record {
     char     key[KEY_LEN];
     uint8_t  value[VALUE_LEN];
-    uint32_t crc32;          // CRC-32 of key + value (leading KEY_LEN+VALUE_LEN bytes)
-    uint8_t  reserved[RESERVED_LEN];
+    uint8_t  key_len;                 // significant key bytes (1..KEY_LEN)
+    uint8_t  value_len;               // significant value bytes (0..VALUE_LEN)
+    uint8_t  reserved[RESERVED_LEN];  // future metadata; zero today (CRC-covered)
+    uint32_t crc32;                   // CRC-32 over the preceding CRC_COVERAGE bytes
 };
 static_assert(offsetof(Record, value) == KEY_LEN, "kv::Record.value must follow the key");
-static_assert(offsetof(Record, crc32) == KEY_LEN + VALUE_LEN, "kv::Record.crc32 must follow key+value");
+static_assert(offsetof(Record, key_len) == KEY_LEN + VALUE_LEN, "kv::Record.key_len must follow key+value");
+static_assert(offsetof(Record, value_len) == KEY_LEN + VALUE_LEN + 1, "kv::Record.value_len must follow key_len");
+static_assert(offsetof(Record, crc32) == CRC_COVERAGE, "kv::Record.crc32 must be the trailing word");
 static_assert(sizeof(Record) == RECORD_SIZE, "kv::Record must be RECORD_SIZE bytes");
 
 } // namespace kv
