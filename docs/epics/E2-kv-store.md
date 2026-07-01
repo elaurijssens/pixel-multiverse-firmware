@@ -16,12 +16,23 @@ holds the WiFi enable flag (E7).
 
 ## Data model
 
-- **Key:** 8 bytes, alphanumeric, **space-padded** if shorter. (Revisit width if a
-  different size aligns better — e.g. making a record a power-of-two size.)
+**Decided (S2.1) — encoded in `src/config/kv_format.hpp`:**
+
+- **Key:** 8 bytes, alphanumeric, **space-padded** if shorter.
 - **Value:** 64 bytes, **untyped** (raw bytes). Interpretation is the caller's job.
-- A record is therefore key(8) + value(64) = 72 bytes today. If alignment favours
-  it, pad the record to a power of two (e.g. 8 + 64 leaves room; or 8 key + 56
-  value = 64). **Decide this in S2.1.**
+- **Record:** **128 bytes** = key(8) + value(64) + **reserved(56)**. 128 is the
+  smallest power of two that fits the 8+64 payload; the reserved bytes leave room
+  for future per-record metadata (valid/tombstone flag, CRC, key length) without
+  changing the record size or reformatting. Power-of-two records keep offset math
+  trivial (`record N` at `RECORD_SIZE*(N+1)`) and pack evenly into the 4 KB erase
+  sector (**header + 31 records per sector**).
+- **Region header:** occupies slot 0 (first 128 bytes) — `magic "MVKV"` +
+  `version(u16)` + `record_size(u16)` + reserved. Detects an
+  uninitialised/foreign region and gates future format changes.
+- **Slot sentinels (`key[0]`):** `0xFF` = erased/empty (fresh flash), `0x00` =
+  tombstone (deleted). Valid keys are alphanumeric, so neither collides; deletion
+  writes `0x00` and needs no sector erase (flash writes only clear bits 1→0).
+- **Endianness:** header multi-byte fields are little-endian (device native).
 
 ## Persistence
 
@@ -53,9 +64,9 @@ Proposed 4-byte ids (finalise in S2.2):
 ### S2.1 — Define the record format ([#12](https://github.com/elaurijssens/gu-multiverse/issues/12))
 *As a developer, I want a fixed on-flash record layout so reads/writes are simple and forward-compatible.*
 **Acceptance criteria**
-- [ ] Record layout documented (key width, value width, padding, total size, endianness if any).
-- [ ] Power-of-two alignment decision made and recorded with rationale.
-- [ ] A magic/version marker exists at the head of the region so future format changes are detectable.
+- [x] Record layout documented (key width, value width, padding, total size, endianness if any). — see Data model above + `src/config/kv_format.hpp`.
+- [x] Power-of-two alignment decision made and recorded with rationale. — 128-byte record (8+64+56 reserved).
+- [x] A magic/version marker exists at the head of the region so future format changes are detectable. — `kv::Header` (`magic "MVKV"` + version + record_size).
 
 ### S2.2 — In-RAM store API ([#13](https://github.com/elaurijssens/gu-multiverse/issues/13))
 *As a developer, I want a clean `put/get/del/iterate` API so the rest of the firmware reads config without touching flash directly.*
