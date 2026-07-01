@@ -1,7 +1,11 @@
 build/*
 cmake-build-debug/
+cmake-build-*/
+# version-stamped firmware images archived by tools/multiverse-ctl.sh flash
+dist/
 .vscode
 .idea/
+.venv/
 __pycache__/
 lib/dist
 lib/build
