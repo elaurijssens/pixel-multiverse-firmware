@@ -42,9 +42,9 @@ To add WiFi later and k/v commands now, parsing/dispatch must be decoupled from 
 ### S1.3 — Command registry / dispatch table ([#10](https://github.com/elaurijssens/gu-multiverse/issues/10))
 *As a developer, I want commands registered in a table so that adding a command doesn't mean editing a giant if-chain.*
 **Acceptance criteria**
-- [ ] Handlers are registered by 4-byte id.
-- [ ] Adding a new command is one registration + one handler function.
-- [ ] Unknown/garbage command ids are skipped without hanging the loop.
+- [x] Handlers are registered by 4-byte id.
+- [x] Adding a new command is one registration + one handler function.
+- [x] Unknown/garbage command ids are skipped without hanging the loop.
 
 ### S1.4 — Migrate existing commands ([#11](https://github.com/elaurijssens/gu-multiverse/issues/11))
 *As a user, I want all current commands to keep working after the refactor.*
