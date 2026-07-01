@@ -1,5 +1,6 @@
 #include "display.hpp"
 #include "version.hpp"
+#include "../selftest.hpp"
 
 using namespace pimoroni;
 
@@ -36,6 +37,11 @@ namespace display {
 
     void update() {
         hub75.update(&graphics);
+    }
+
+    void selftest(uint8_t test_id) {
+        display_selftest::render(graphics, WIDTH, HEIGHT, test_id);
+        update();
     }
 
     void play_note(uint8_t channel, uint16_t freq, uint8_t waveform, uint16_t a, uint16_t d, uint16_t s, uint16_t r, uint8_t phase) {

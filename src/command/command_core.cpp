@@ -117,6 +117,25 @@ void run(Transport& transport) {
             continue;
         }
 
+        if(command == "test") {
+            // Two ASCII digits select the self-test pattern (00-99), so many
+            // tests share one 4-byte command id. See display/selftest.hpp for
+            // the pattern catalogue (channel/row/column/geometry checks).
+            uint8_t digits[2];
+            transport.poll();
+            if (transport.read(digits, 2) != 2) {
+                continue;
+            }
+            if (digits[0] < '0' || digits[0] > '9' ||
+                digits[1] < '0' || digits[1] > '9') {
+                display::info("test?");
+                continue;
+            }
+            uint8_t test_id = (digits[0] - '0') * 10 + (digits[1] - '0');
+            display::selftest(test_id);
+            continue;
+        }
+
         /*if(command == "wave") {
             uint16_t audio_len = get_data_uint16(transport);
             if (transport.read((uint8_t *)audio_buffer, audio_len) == audio_len) {

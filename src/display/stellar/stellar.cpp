@@ -28,6 +28,14 @@ namespace display {
         stellar_unicorn.update(&graphics);
     }
 
+    void selftest(uint8_t test_id) {
+        // Stub for now — only exercised on the i75 bench panel. To enable,
+        // #include "../selftest.hpp" and:
+        //   display_selftest::render(graphics, WIDTH, HEIGHT, test_id);
+        //   update();
+        (void)test_id;
+    }
+
     void play_note(uint8_t channel, uint16_t freq, uint8_t waveform, uint16_t a, uint16_t d, uint16_t s, uint16_t r, uint8_t phase) {
         stellar_unicorn.play_synth();
         AudioChannel &ch = stellar_unicorn.synth_channel(channel);
