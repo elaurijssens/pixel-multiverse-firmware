@@ -22,8 +22,6 @@ namespace {
 const size_t COMMAND_LEN = 4;
 uint8_t command_buffer[COMMAND_LEN];
 
-//uint16_t audio_buffer[22050] = {0};
-
 uint16_t get_data_uint16(command_core::Transport& transport) {
     uint16_t len;
     transport.poll();
@@ -136,12 +134,9 @@ void handle_test(command_core::Transport& transport) {
     display::selftest(test_id);
 }
 
-/*void handle_wave(command_core::Transport& transport) {
-    uint16_t audio_len = get_data_uint16(transport);
-    if (transport.read((uint8_t *)audio_buffer, audio_len) == audio_len) {
-        display::play_audio((uint8_t *)audio_buffer, audio_len / 2);
-    }
-}*/
+// The `wave` command (raw PCM streaming via display::play_audio) was dropped in
+// S1.4: no host tooling ever sent it, and `note` covers synth audio. play_audio()
+// remains in the display API if raw streaming is wanted again later.
 
 void handle_note(command_core::Transport& transport) {
     uint8_t channel = get_data_uint8(transport);
