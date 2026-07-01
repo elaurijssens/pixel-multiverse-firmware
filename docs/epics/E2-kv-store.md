@@ -104,8 +104,24 @@ Proposed 4-byte ids (finalise in S2.2):
 - [ ] A table of reserved keys is documented (e.g. `board`, `width`, `height`, `wifi`, …) with value encodings.
 - [ ] Defaults are defined for when a key is absent.
 
+## Reserved-metadata candidates (deferred)
+
+The 50 reserved bytes can absorb new per-record fields later **without moving**
+key/value/lengths/crc or reformatting. Deferred, in priority order:
+
+- **Write sequence number (`u32`)** — enables an append-only / log-structured
+  store (append `seq+1` instead of erase-in-place; highest `seq` per key wins;
+  compact on sector-full). This is the enabler for the wear-levelling + power-loss
+  safety below; **define it with the S2.3 persistence scheme.**
+- **`flags` byte** — e.g. read-only/locked to protect identity keys
+  (`board`/`width`/`height`) from casual overwrite.
+- *Rejected:* value type/encoding tag (fights "values are untyped — typing is the
+  caller's job"), timestamp (no guaranteed RTC), key hash (linear scan over ≤31
+  records/sector is trivial).
+
 ## Out of scope
 
-- Wear-levelling / log-structured storage (note as future work).
+- Wear-levelling / log-structured storage (note as future work; see the write
+  sequence number above).
 - Encryption/auth of values.
 - Typed values — values stay raw bytes; typing is the caller's concern.
