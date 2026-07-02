@@ -21,14 +21,14 @@ holds the WiFi enable flag (E7).
 - **Key:** 8 bytes, alphanumeric, **space-padded** if shorter.
 - **Value:** 64 bytes, **untyped** (raw bytes). Interpretation is the caller's job.
 - **Record:** **128 bytes** = key(8) + value(64) + **seq(4)** + **key_len(1)** +
-  **value_len(1)** + **reserved(46)** + **crc32(4)**. 128 is the smallest power of
-  two that fits the 8+64 payload with room for metadata. `key_len`/`value_len` give
-  the significant byte counts (padding vs content for keys, used length for values);
-  `seq` is the write sequence for the log-structured store (below). New fields can
-  be carved from `reserved` later **without moving** key, value, seq, the length
-  fields, or the trailing CRC. Power-of-two records keep offset math trivial
-  (`record N` at `RECORD_SIZE*(N+1)`) and pack evenly into the 4 KB erase sector
-  (**header + 31 records per sector**).
+  **value_len(1)** + **flags(1)** + **reserved(45)** + **crc32(4)**. 128 is the
+  smallest power of two that fits the 8+64 payload with room for metadata.
+  `key_len`/`value_len` give the significant byte counts (padding vs content for
+  keys, used length for values); `seq` is the write sequence for the log-structured
+  store; `flags` carries record bits (`FLAG_DELETED` = tombstone). New fields can be
+  carved from `reserved` later **without moving** the earlier fields or the trailing
+  CRC. Power-of-two records keep offset math trivial and pack evenly into the 4 KB
+  erase sector.
 - **Integrity:** the last 4 bytes of every slot are a **CRC-32** (IEEE 802.3,
   zlib-compatible — zlib's `crc32()` is already linked) over the preceding **124
   bytes** — the whole slot except the CRC word — so key, value, the length fields,
@@ -95,11 +95,11 @@ Proposed 4-byte ids (finalise in S2.2):
 ### S2.3 — Flash persistence ([#14](https://github.com/elaurijssens/gu-multiverse/issues/14))
 *As a user, I want my configuration to survive power cycles.*
 **Acceptance criteria**
-- [ ] Store loads from flash at boot (highest-`seq` valid record per key) and persists changes.
-- [ ] Writes are **log-structured / append-only** with `seq`; sector erase happens only on compaction, not per write (wear-levelling).
-- [ ] Reserved flash region does not overlap the program image (verified via linker/map).
-- [ ] Interrupt/second-core safety for writes implemented per SDK rules.
-- [ ] Power-loss during write does not brick the device (at minimum: corrupt/half-written record fails CRC and the prior value stays authoritative; a corrupt store falls back to empty/defaults).
+- [x] Store loads from flash at boot (highest-`seq` valid record per key) and persists changes. — `kv::Log::load`/`put`/`del` (`src/config/kv_log.cpp`); host test + on-device boot/reboot.
+- [x] Writes are **log-structured / append-only** with `seq`; sector erase happens only on compaction, not per write (wear-levelling). — one record per 256 B page; `compact()` only when the log fills.
+- [x] Reserved flash region does not overlap the program image (verified via linker/map). — 16 KB at top of flash; image ends 0x28530, region 0x3FC000 (≈3.9 MB gap); `__flash_binary_end` runtime guard.
+- [x] Interrupt/second-core safety for writes implemented per SDK rules. — single-core; `save_and_disable_interrupts()`/`restore_interrupts()` around erase/program (`kv_flash.cpp`).
+- [x] Power-loss during write does not brick the device. — per-record CRC-32: a torn append fails its CRC and the prior record stays authoritative (host test simulates a truncated page); a corrupt/foreign region → format → empty/defaults. **Known limitation:** a power loss *mid-compaction* can lose config → boots empty (defaults, not bricked); a two-region ping-pong compaction is the future hardening.
 
 ### S2.4 — `put`/`get`/`del` commands ([#15](https://github.com/elaurijssens/gu-multiverse/issues/15))
 *As a host, I want to read and write config over the existing transport.*

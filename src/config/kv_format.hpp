@@ -35,11 +35,15 @@ constexpr size_t RECORD_SIZE = 128;
 // The CRC covers everything in the slot except its own trailing word.
 constexpr size_t CRC_COVERAGE = RECORD_SIZE - CRC_LEN;  // 124
 
-// Per-record reserved metadata (after the length fields, before the CRC);
-// CRC-covered. New fields can be carved from here later without moving key,
-// value, seq, the length fields, or the trailing CRC.
+// Per-record reserved metadata (after the flags byte, before the CRC); CRC-
+// covered. New fields can be carved from here later without moving key, value,
+// seq, the length/flags fields, or the trailing CRC.
 constexpr size_t RESERVED_LEN =
-    RECORD_SIZE - KEY_LEN - VALUE_LEN - 4 /*seq*/ - 1 /*key_len*/ - 1 /*value_len*/ - CRC_LEN;  // 46
+    RECORD_SIZE - KEY_LEN - VALUE_LEN - 4 /*seq*/ - 1 /*key_len*/ - 1 /*value_len*/
+        - 1 /*flags*/ - CRC_LEN;  // 45
+
+// Record flag bits (Record::flags).
+constexpr uint8_t FLAG_DELETED = 0x01;  // tombstone: the log records this key deleted
 
 constexpr uint16_t FORMAT_VERSION = 1;
 constexpr char     MAGIC[4]       = {'M', 'V', 'K', 'V'};
@@ -78,6 +82,7 @@ struct Record {
     uint32_t seq;                     // write sequence — highest valid seq per key wins
     uint8_t  key_len;                 // significant key bytes (1..KEY_LEN)
     uint8_t  value_len;               // significant value bytes (0..VALUE_LEN)
+    uint8_t  flags;                   // FLAG_* bits (e.g. FLAG_DELETED tombstone)
     uint8_t  reserved[RESERVED_LEN];  // future metadata; zero today (CRC-covered)
     uint32_t crc32;                   // CRC-32 over the preceding CRC_COVERAGE bytes
 };
@@ -85,6 +90,7 @@ static_assert(offsetof(Record, value) == KEY_LEN, "kv::Record.value must follow 
 static_assert(offsetof(Record, seq) == KEY_LEN + VALUE_LEN, "kv::Record.seq must follow key+value (4-aligned)");
 static_assert(offsetof(Record, key_len) == KEY_LEN + VALUE_LEN + 4, "kv::Record.key_len must follow seq");
 static_assert(offsetof(Record, value_len) == KEY_LEN + VALUE_LEN + 5, "kv::Record.value_len must follow key_len");
+static_assert(offsetof(Record, flags) == KEY_LEN + VALUE_LEN + 6, "kv::Record.flags must follow value_len");
 static_assert(offsetof(Record, crc32) == CRC_COVERAGE, "kv::Record.crc32 must be the trailing word");
 static_assert(sizeof(Record) == RECORD_SIZE, "kv::Record must be RECORD_SIZE bytes");
 

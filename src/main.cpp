@@ -32,6 +32,7 @@
 
 #include "command/command_core.hpp"
 #include "command/usb_cdc_transport.hpp"
+#include "config/kv_flash.hpp"
 
 // UART0 for Picoprobe debug
 // UART1 for picoprobe to target device
@@ -45,6 +46,8 @@ int main(void) {
     tusb_init(); // Tiny USB?
 
     display::init();
+
+    kv::config_boot();  // load persisted config from flash (formats on first use)
 
     command_core::UsbCdcTransport transport;
     command_core::run(transport);
