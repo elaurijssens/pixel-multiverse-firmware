@@ -8,6 +8,9 @@
 #   multiverse-ctl.sh test NN [device]     Show self-test pattern NN    (multiverse:testNN)
 #   multiverse-ctl.sh data IMG [device]    Send image uncompressed      (multiverse:data)
 #   multiverse-ctl.sh zdat IMG [device]    Send image zlib-compressed   (multiverse:zdat)
+#   multiverse-ctl.sh set KEY VAL [device] Set a config key             (multiverse:put )
+#   multiverse-ctl.sh get KEY [device]     Read a config key            (multiverse:get )
+#   multiverse-ctl.sh del KEY [device]     Delete a config key          (multiverse:del )
 #   multiverse-ctl.sh flash [NN] [device]  Build, version-stamp, flash, then self-test
 #   multiverse-ctl.sh list                 List detected Multiverse ports
 #
@@ -47,7 +50,7 @@ if [ -z "${MV_PYTHON:-}" ] && [ -x "$REPO_ROOT/.venv/bin/python" ]; then
 fi
 
 usage() {
-  sed -n '3,34p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,37p' "$0" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -145,6 +148,32 @@ send_image() {
     "$mode" "$image" "$device" --width "$w" --height "$h" --fit "${MV_FIT:-contain}"
 }
 
+# Read/write a persistent config key via the Python helper.
+#   config_cmd set|get|del <device> <key> [value]
+config_cmd() {
+  local mode="$1" device="$2" key="$3" value="${4-}"
+  if [ -z "$key" ]; then
+    echo "error: '$mode' needs a key." >&2
+    exit 1
+  fi
+  if [ -z "$device" ]; then
+    echo "error: no Multiverse serial port found." >&2
+    echo "       plug the board in, or pass the device explicitly. Detected ports:" >&2
+    detect_ports | sed 's/^/         /' >&2
+    exit 1
+  fi
+  if [ ! -e "$device" ]; then
+    echo "error: device '$device' does not exist." >&2
+    exit 1
+  fi
+
+  if [ "$mode" = "set" ]; then
+    "${MV_PYTHON:-python3}" "$SCRIPT_DIR/multiverse-config.py" set --device "$device" "$key" "$value"
+  else
+    "${MV_PYTHON:-python3}" "$SCRIPT_DIR/multiverse-config.py" "$mode" --device "$device" "$key"
+  fi
+}
+
 # Bench-release flow: rebuild, archive a version-stamped image, flash it over
 # BOOTSEL, then confirm the board is alive with a self-test pattern.
 flash() {
@@ -232,6 +261,9 @@ case "${1:-}" in
     send "test${2}" "${3:-$(first_port)}"
     ;;
   data|zdat) send_image "$1" "${2:-}" "${3:-$(first_port)}" ;;
+  set) config_cmd set "${4:-$(first_port)}" "${2:-}" "${3-}" ;;
+  get) config_cmd get "${3:-$(first_port)}" "${2:-}" ;;
+  del) config_cmd del "${3:-$(first_port)}" "${2:-}" ;;
   flash) flash "${2:-20}" "${3:-}" ;;
   list|ls)
     ports="$(detect_ports)"

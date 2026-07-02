@@ -65,6 +65,14 @@ bool region_overlaps_image() {
 
 Store& config() { return g_store; }
 
+bool config_put(std::string_view key, const uint8_t* value, size_t value_len) {
+    return g_log.put(g_store, key, value, value_len);
+}
+
+bool config_del(std::string_view key) {
+    return g_log.del(g_store, key);
+}
+
 void config_boot() {
     if (region_overlaps_image()) {
         g_store.clear();  // fail safe: never write flash that holds the program

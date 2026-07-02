@@ -66,15 +66,19 @@ holds the WiFi enable flag (E7).
 
 ## Commands (over E1)
 
-Proposed 4-byte ids (finalise in S2.2):
+Finalised in S2.4 (`src/config/kv_commands.cpp`). 4-byte ids with a trailing
+space; **length-prefixed** payloads (so keys/values are variable and `value_len`
+is conveyed); all responses are **status-first**.
 
 | Command | Payload in | Response out |
 |---------|-----------|--------------|
-| `put ` | key(8) + value(64) | ack/err |
-| `get ` | key(8) | value(64) or not-found |
-| `del ` | key(8) | ack/err |
+| `put ` | `klen(1)` `key[klen]` `vlen(1)` `value[vlen]` | `status(1)` — 1 ok / 0 fail |
+| `get ` | `klen(1)` `key[klen]` | `1, vlen(1), value[vlen]` (found) or `0` (not found) |
+| `del ` | `klen(1)` `key[klen]` | `status(1)` — 1 deleted / 0 absent |
 
-`get` requires the transport **write** path from E1/S1.2.
+`klen` is 1..8, `vlen` 0..64; a malformed frame answers status 0 and the loop
+re-syncs. `get` uses the transport **write** path from E1/S1.2. Host helper:
+`tools/multiverse-config.py` (driven by `multiverse-ctl.sh set|get|del`).
 
 ## User stories
 
@@ -104,9 +108,9 @@ Proposed 4-byte ids (finalise in S2.2):
 ### S2.4 — `put`/`get`/`del` commands ([#15](https://github.com/elaurijssens/gu-multiverse/issues/15))
 *As a host, I want to read and write config over the existing transport.*
 **Acceptance criteria**
-- [ ] The three commands are registered with the E1 core and round-trip correctly.
-- [ ] `get` of a missing key returns a clear not-found response.
-- [ ] Host-side helper/example demonstrates setting and reading a key.
+- [x] The three commands are registered with the E1 core and round-trip correctly. — `kv::register_commands()` (`src/config/kv_commands.cpp`); set→get verified on i75w, and set→reboot→get confirms flash persistence end-to-end.
+- [x] `get` of a missing key returns a clear not-found response. — status byte `0` → helper prints `not found`.
+- [x] Host-side helper/example demonstrates setting and reading a key. — `tools/multiverse-config.py` via `multiverse-ctl.sh set|get|del`.
 
 ### S2.5 — Well-known keys catalogue ([#16](https://github.com/elaurijssens/gu-multiverse/issues/16))
 *As a developer, I want a documented set of reserved keys so config is consistent across boards.*

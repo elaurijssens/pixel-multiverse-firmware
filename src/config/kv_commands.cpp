@@ -1,0 +1,86 @@
+#include "config/kv_commands.hpp"
+
+#include <cstddef>
+#include <cstdint>
+#include <string_view>
+
+#include "config/kv_flash.hpp"
+#include "config/kv_format.hpp"
+#include "command/command_core.hpp"
+#include "command/transport.hpp"
+
+// Wire protocol (length-prefixed; all responses status-first):
+//   put : klen(1) key[klen] vlen(1) value[vlen] -> status(1)  (1 ok / 0 fail)
+//   get : klen(1) key[klen]                      -> 1, vlen(1), value[vlen]  |  0
+//   del : klen(1) key[klen]                      -> status(1)  (1 deleted / 0 absent)
+// Malformed frames answer status 0; the command loop re-syncs on the next prefix.
+namespace kv {
+namespace {
+
+using command_core::Transport;
+
+size_t read_bytes(Transport& t, uint8_t* buf, size_t n) {
+    t.poll();
+    return t.read(buf, n);
+}
+
+bool read_u8(Transport& t, uint8_t& out) {
+    return read_bytes(t, &out, 1) == 1;
+}
+
+void write_u8(Transport& t, uint8_t v) {
+    t.write(&v, 1);
+}
+
+// Read klen(1) + key bytes into `key` (capacity KEY_LEN). Returns the key length,
+// or 0 if the length is out of range or a read timed out.
+size_t read_key(Transport& t, char* key) {
+    uint8_t klen;
+    if (!read_u8(t, klen) || klen < 1 || klen > KEY_LEN) return 0;
+    if (read_bytes(t, reinterpret_cast<uint8_t*>(key), klen) != klen) return 0;
+    return klen;
+}
+
+void handle_put(Transport& t) {
+    char key[KEY_LEN];
+    size_t klen = read_key(t, key);
+    uint8_t vlen = 0;
+    uint8_t value[VALUE_LEN];
+    bool ok = false;
+    if (klen > 0 && read_u8(t, vlen) && vlen <= VALUE_LEN &&
+        (vlen == 0 || read_bytes(t, value, vlen) == vlen)) {
+        ok = config_put(std::string_view(key, klen), value, vlen);
+    }
+    write_u8(t, ok ? 1 : 0);
+}
+
+void handle_get(Transport& t) {
+    char key[KEY_LEN];
+    size_t klen = read_key(t, key);
+    if (klen == 0) { write_u8(t, 0); return; }
+
+    size_t vlen = 0;
+    const uint8_t* value = config().get(std::string_view(key, klen), vlen);
+    if (!value) { write_u8(t, 0); return; }
+
+    write_u8(t, 1);
+    write_u8(t, static_cast<uint8_t>(vlen));
+    if (vlen) t.write(value, vlen);
+}
+
+void handle_del(Transport& t) {
+    char key[KEY_LEN];
+    size_t klen = read_key(t, key);
+    bool ok = klen > 0 && config_del(std::string_view(key, klen));
+    write_u8(t, ok ? 1 : 0);
+}
+
+} // namespace
+
+void register_commands() {
+    command_core::register_command("put ", handle_put);
+    command_core::register_command("get ", handle_get);
+    command_core::register_command("del ", handle_del);
+}
+
+} // namespace kv

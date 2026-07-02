@@ -40,12 +40,15 @@ changes live in the USB code — keep them encapsulated.
 The firmware waits for the literal prefix `multiverse:` then reads a **4-byte**
 command (`src/main.cpp`). Current commands: `data`, `zdat` (zlib), `note`,
 `test` (two ASCII digits `00`–`99` select a self-test pattern — see
-`src/display/selftest.hpp`), `_rst` (watchdog reboot), `_usb`
-(`reset_usb_boot` → BOOTSEL/UF2 mode). Keep command ids 4 bytes for wire
+`src/display/selftest.hpp`), `put `/`get `/`del ` (E2 config store, length-prefixed
+— see `src/config/kv_commands.cpp`), `_rst` (watchdog reboot), `_usb`
+(`reset_usb_boot` → BOOTSEL/UF2 mode). Commands are registered with the E1 core
+via `command_core::register_command`. Keep command ids 4 bytes for wire
 compatibility with existing host tooling.
 
-`tools/multiverse-ctl.sh reset|usb|test|data|zdat|flash|list` sends control
-commands and auto-detects the serial port. `data`/`zdat` send an image
+`tools/multiverse-ctl.sh reset|usb|test|data|zdat|set|get|del|flash|list` sends
+control commands and auto-detects the serial port (`set`/`get`/`del` drive the E2
+config store via `tools/multiverse-config.py`). `data`/`zdat` send an image
 (png/jpg/gif/webp) uncompressed / zlib-compressed via `tools/multiverse-image.py`
 (needs Pillow); that helper packs pixels into the firmware's `PenRGB888` byte
 order (little-endian `B,G,R,0` per pixel — **not** RGBA). **macOS gotcha:** write
