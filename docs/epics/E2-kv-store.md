@@ -20,14 +20,15 @@ holds the WiFi enable flag (E7).
 
 - **Key:** 8 bytes, alphanumeric, **space-padded** if shorter.
 - **Value:** 64 bytes, **untyped** (raw bytes). Interpretation is the caller's job.
-- **Record:** **128 bytes** = key(8) + value(64) + **key_len(1)** + **value_len(1)**
-  + **reserved(50)** + **crc32(4)**. 128 is the smallest power of two that fits the
-  8+64 payload with room for metadata. `key_len`/`value_len` give the significant
-  byte counts (padding vs content for keys, used length for values). New fields can
-  be carved from `reserved` later **without moving** key, value, the length fields,
-  or the trailing CRC. Power-of-two records keep offset math trivial (`record N` at
-  `RECORD_SIZE*(N+1)`) and pack evenly into the 4 KB erase sector (**header + 31
-  records per sector**).
+- **Record:** **128 bytes** = key(8) + value(64) + **seq(4)** + **key_len(1)** +
+  **value_len(1)** + **reserved(46)** + **crc32(4)**. 128 is the smallest power of
+  two that fits the 8+64 payload with room for metadata. `key_len`/`value_len` give
+  the significant byte counts (padding vs content for keys, used length for values);
+  `seq` is the write sequence for the log-structured store (below). New fields can
+  be carved from `reserved` later **without moving** key, value, seq, the length
+  fields, or the trailing CRC. Power-of-two records keep offset math trivial
+  (`record N` at `RECORD_SIZE*(N+1)`) and pack evenly into the 4 KB erase sector
+  (**header + 31 records per sector**).
 - **Integrity:** the last 4 bytes of every slot are a **CRC-32** (IEEE 802.3,
   zlib-compatible — zlib's `crc32()` is already linked) over the preceding **124
   bytes** — the whole slot except the CRC word — so key, value, the length fields,
@@ -37,9 +38,10 @@ holds the WiFi enable flag (E7).
 - **Region header:** occupies slot 0 (first 128 bytes) — `magic "MVKV"` +
   `version(u16)` + `record_size(u16)` + reserved + trailing `crc32(u32)`. Detects
   an uninitialised/foreign region and gates future format changes.
-- **Slot sentinels (`key[0]`):** `0xFF` = erased/empty (fresh flash), `0x00` =
-  tombstone (deleted). Valid keys are alphanumeric, so neither collides; deletion
-  writes `0x00` and needs no sector erase (flash writes only clear bits 1→0).
+- **Slot sentinels (`key[0]`):** `0xFF` = erased/empty (fresh flash — an append
+  target). Valid keys are alphanumeric, so this never collides. Deletion appends a
+  tombstone record (a higher-`seq` record for the key marked deleted) rather than
+  erasing in place; the exact delete marker is finalised in S2.3.
 - **Endianness:** header multi-byte fields are little-endian (device native).
 
 ## Persistence
@@ -47,10 +49,17 @@ holds the WiFi enable flag (E7).
 - Store in flash, not RAM. On RP2040/RP2350 the SDK exposes flash via
   `hardware/flash.h`; reserve a region at the top of flash (outside the program
   image) using `PICO_FLASH_SIZE_BYTES`.
-- Flash is erased per-sector (4 KB) and written per-page (256 B). A naive
-  "erase + rewrite whole region" is fine for the first cut given low write
-  frequency. Note wear/atomicity as a known limitation; a log-structured or
-  double-buffered sector scheme can come later.
+- Flash is erased per-sector (4 KB) and written per-page (256 B). The store is
+  **log-structured / append-only** for wear-levelling: `put` writes a fresh record
+  into the next erased slot with `seq = max(seq)+1` instead of rewriting in place,
+  and deletion appends a tombstone. On load, the store scans all slots and keeps
+  the **highest-`seq` valid record per key**. This spreads writes across slots
+  (and, as the region grows, across sectors) and is naturally power-loss safe: a
+  half-written record fails its CRC and the previous highest-`seq` record remains
+  authoritative.
+- **Compaction:** when the region fills, rewrite the live set (one record per key)
+  into a freshly erased region and continue. Sector erase is thus rare, not
+  per-write. (First cut may use a single sector; multi-sector rotation can follow.)
 - Writes must disable interrupts / pause the other core per SDK guidance, and on
   RP2040 cannot run from the core executing XIP — follow `flash_range_program`
   rules.
@@ -73,7 +82,7 @@ Proposed 4-byte ids (finalise in S2.2):
 *As a developer, I want a fixed on-flash record layout so reads/writes are simple and forward-compatible.*
 **Acceptance criteria**
 - [x] Record layout documented (key width, value width, padding, total size, endianness if any). — see Data model above + `src/config/kv_format.hpp`.
-- [x] Power-of-two alignment decision made and recorded with rationale. — 128-byte record (8+64+56 reserved).
+- [x] Power-of-two alignment decision made and recorded with rationale. — 128-byte record (key 8 + value 64 + seq 4 + key_len/value_len + reserved 46 + crc 4).
 - [x] A magic/version marker exists at the head of the region so future format changes are detectable. — `kv::Header` (`magic "MVKV"` + version + record_size).
 
 ### S2.2 — In-RAM store API ([#13](https://github.com/elaurijssens/gu-multiverse/issues/13))
@@ -86,10 +95,11 @@ Proposed 4-byte ids (finalise in S2.2):
 ### S2.3 — Flash persistence ([#14](https://github.com/elaurijssens/gu-multiverse/issues/14))
 *As a user, I want my configuration to survive power cycles.*
 **Acceptance criteria**
-- [ ] Store loads from flash at boot and persists changes.
+- [ ] Store loads from flash at boot (highest-`seq` valid record per key) and persists changes.
+- [ ] Writes are **log-structured / append-only** with `seq`; sector erase happens only on compaction, not per write (wear-levelling).
 - [ ] Reserved flash region does not overlap the program image (verified via linker/map).
 - [ ] Interrupt/second-core safety for writes implemented per SDK rules.
-- [ ] Power-loss during write does not brick the device (at minimum: corrupt store falls back to empty/defaults).
+- [ ] Power-loss during write does not brick the device (at minimum: corrupt/half-written record fails CRC and the prior value stays authoritative; a corrupt store falls back to empty/defaults).
 
 ### S2.4 — `put`/`get`/`del` commands ([#15](https://github.com/elaurijssens/gu-multiverse/issues/15))
 *As a host, I want to read and write config over the existing transport.*
@@ -106,22 +116,20 @@ Proposed 4-byte ids (finalise in S2.2):
 
 ## Reserved-metadata candidates (deferred)
 
-The 50 reserved bytes can absorb new per-record fields later **without moving**
-key/value/lengths/crc or reformatting. Deferred, in priority order:
+The 46 reserved bytes can absorb new per-record fields later **without moving**
+key/value/seq/lengths/crc or reformatting. Deferred, in priority order:
 
-- **Write sequence number (`u32`)** — enables an append-only / log-structured
-  store (append `seq+1` instead of erase-in-place; highest `seq` per key wins;
-  compact on sector-full). This is the enabler for the wear-levelling + power-loss
-  safety below; **define it with the S2.3 persistence scheme.**
 - **`flags` byte** — e.g. read-only/locked to protect identity keys
-  (`board`/`width`/`height`) from casual overwrite.
+  (`board`/`width`/`height`) from casual overwrite; likely also carries the
+  log's delete marker (finalised in S2.3).
 - *Rejected:* value type/encoding tag (fights "values are untyped — typing is the
   caller's job"), timestamp (no guaranteed RTC), key hash (linear scan over ≤31
   records/sector is trivial).
 
+*(The write sequence number is now part of the format — see the `seq` field — and
+the log-structured / wear-levelled persistence it enables is the S2.3 design.)*
+
 ## Out of scope
 
-- Wear-levelling / log-structured storage (note as future work; see the write
-  sequence number above).
 - Encryption/auth of values.
 - Typed values — values stay raw bytes; typing is the caller's concern.
