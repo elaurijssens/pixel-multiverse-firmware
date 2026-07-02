@@ -23,9 +23,15 @@
 # "data"/"zdat" accept png/jpg/gif/webp (via tools/multiverse-image.py, needs
 # Pillow). Panel size defaults to MV_SIZE (256x64) and must match the firmware;
 # MV_FIT (contain|cover|stretch) controls how a mismatched image is fitted.
+# An animated GIF/WebP is streamed frame-by-frame and always sent compressed
+# ("zdat", regardless of the data/zdat subcommand): MV_LOOP sets how many times
+# it plays (0 = forever), MV_FPS overrides the frame rate, MV_STILL=1 sends only
+# the first frame (honouring the chosen data/zdat mode).
 #
 # Env for "flash":  PICO_SDK_PATH (required)   MV_BUILD_DIR (default below)
 # Env for images:   MV_SIZE (default 256x64)   MV_FIT (default contain)
+#                   MV_LOOP (default 1, 0=forever)   MV_FPS (override rate)
+#                   MV_STILL (1 = first frame only)
 #                   MV_PYTHON (python with Pillow; defaults to the repo's
 #                              .venv/bin/python if present, else python3)
 #
@@ -50,7 +56,7 @@ if [ -z "${MV_PYTHON:-}" ] && [ -x "$REPO_ROOT/.venv/bin/python" ]; then
 fi
 
 usage() {
-  sed -n '3,37p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,43p' "$0" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -144,8 +150,13 @@ send_image() {
 
   local size="${MV_SIZE:-256x64}"
   local w="${size%%x*}" h="${size##*x}"
+  local extra=()
+  [ -n "${MV_LOOP:-}" ] && extra+=(--loop "$MV_LOOP")
+  [ -n "${MV_FPS:-}" ] && extra+=(--fps "$MV_FPS")
+  [ -n "${MV_STILL:-}" ] && extra+=(--still)
   "${MV_PYTHON:-python3}" "$SCRIPT_DIR/multiverse-image.py" \
-    "$mode" "$image" "$device" --width "$w" --height "$h" --fit "${MV_FIT:-contain}"
+    "$mode" "$image" "$device" --width "$w" --height "$h" --fit "${MV_FIT:-contain}" \
+    ${extra[@]+"${extra[@]}"}
 }
 
 # Read/write a persistent config key via the Python helper.
