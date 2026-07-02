@@ -80,6 +80,31 @@ is conveyed); all responses are **status-first**.
 re-syncs. `get` uses the transport **write** path from E1/S1.2. Host helper:
 `tools/multiverse-config.py` (driven by `multiverse-ctl.sh set|get|del`).
 
+## Well-known keys (S2.5)
+
+Values stay raw bytes (E2 keeps them untyped), but the **reserved** keys below use
+a documented **ASCII** encoding so they are settable from the host CLI
+(`multiverse-ctl.sh set width 256`) and human-readable — numbers as ASCII decimal,
+booleans as `"0"`/`"1"`, strings as raw ASCII (`value_len` bytes, not
+NUL-terminated). Reserved keys are lowercase; treat any other key as opaque
+app/user data.
+
+| Key | Meaning | Encoding | Default when absent | Consumer |
+|-----|---------|----------|---------------------|----------|
+| `board` | board model | ASCII (`galactic`, `cosmic`, `stellar`, `i75`, `i75w`, `plasma`) | compile-time `MULTIVERSE_BOARD` | E3/E4 |
+| `chip` | chip family | ASCII (`rp2040` \| `rp2350`) | the built image's target | E4/E8 |
+| `width` | panel width, px | ASCII decimal | compile-time `display::WIDTH` | E3 |
+| `height` | panel height, px | ASCII decimal | compile-time `display::HEIGHT` | E3 |
+| `rotate` | rotation, degrees | ASCII decimal (`0` \| `90` \| `180` \| `270`) | `0` | E3 |
+| `bright` | brightness | ASCII decimal `0`–`255` | board default | E3 |
+| `wifi` | WiFi enabled | ASCII bool (`0` \| `1`) | `0` (disabled) | E7 |
+| `name` | friendly/host name | ASCII string (≤ `VALUE_LEN`) | unset (use serial/unique id) | E7 |
+
+**Defaults rule:** the firmware **never auto-detects hardware** (see Principles) —
+an absent key means "use the compile-time / documented default" above; the owner
+overrides by writing the key. Consumers (E3/E4/E7) read via `kv::config().get()`,
+falling back to the default when `get` returns not-found.
+
 ## User stories
 
 ### S2.1 — Define the record format ([#12](https://github.com/elaurijssens/gu-multiverse/issues/12))
@@ -115,8 +140,8 @@ re-syncs. `get` uses the transport **write** path from E1/S1.2. Host helper:
 ### S2.5 — Well-known keys catalogue ([#16](https://github.com/elaurijssens/gu-multiverse/issues/16))
 *As a developer, I want a documented set of reserved keys so config is consistent across boards.*
 **Acceptance criteria**
-- [ ] A table of reserved keys is documented (e.g. `board`, `width`, `height`, `wifi`, …) with value encodings.
-- [ ] Defaults are defined for when a key is absent.
+- [x] A table of reserved keys is documented (e.g. `board`, `width`, `height`, `wifi`, …) with value encodings. — see **Well-known keys** above.
+- [x] Defaults are defined for when a key is absent. — per-key defaults + the "absent → compile-time/documented default" rule (no hardware auto-detection).
 
 ## Reserved-metadata candidates (deferred)
 
