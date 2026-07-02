@@ -97,6 +97,19 @@ surface with `invalid = true` rather than crashing.
   configured but driver-for-other-family not present."
 - Keep the `display::` namespace API stable so `main.cpp`/command handlers don't
   change.
+- **Wrong-driver hazard — see [`docs/reference/board-pins.md`](../reference/board-pins.md).**
+  Boards reuse overlapping GPIOs, and one board's driver *outputs* land on another
+  board's *switch-to-ground inputs* (worst case: Hub75 drives six of the Unicorn's
+  button pins). So:
+  - **S3.3 driver dispatch** must enforce a **per-image allow-list** — only a board
+    whose driver is linked can be selected; anything else fails safe.
+  - **A family image has no safe default driver** (conflicting pins). When `board` is
+    unset/invalid there, bring up **no driver** — pins high-impedance, render nothing,
+    wait for the owner to set `board` over USB. (Today's per-board images link one
+    driver, so the S3.1 `multiverse::BOARD` fallback stays safe.) This tightens the
+    S3.1 `invalid` path and S3.3's "selecting an unlinked driver fails gracefully" AC.
+  - Ship a **user-facing warning not to operate the board switches** on unified
+    firmware (the firmware never reads them anyway).
 
 ## Out of scope
 
