@@ -50,9 +50,17 @@ is already uniform across boards — it just needs one implementation behind it.
 ### S3.1 — Board descriptor + selection ([#17](https://github.com/elaurijssens/gu-multiverse/issues/17))
 *As the firmware, I want to build a board descriptor from the k/v store at boot so I can drive the right hardware.*
 **Acceptance criteria**
-- [ ] Descriptor struct defined; populated from k/v keys (`board`, `width`, `height`, …).
-- [ ] Sensible default when keys are absent (documented).
-- [ ] Invalid/unknown board values fail safe (e.g. show a diagnostic, don't crash).
+- [x] Descriptor struct defined; populated from k/v keys (`board`, `width`, `height`, …). — `display::BoardDescriptor` + `describe()` in `src/display/board_config.{hpp,cpp}`.
+- [x] Sensible default when keys are absent (documented). — see **Defaults** below; host-tested.
+- [x] Invalid/unknown board values fail safe (e.g. show a diagnostic, don't crash). — unparseable `board` keeps the fallback and sets `invalid` (a flag the consuming stage renders); never asserts.
+
+**Defaults (S3.1):** the `board` key selects the board; when **absent**, `describe()`
+uses the caller's fallback (the compile-time `multiverse::BOARD`). Dimensions come
+from the per-kind table (galactic 53×11, cosmic 32×32, stellar 16×16, i75 256×64,
+plasma 1×64); i75/Plasma then override from the `width`/`height` keys (basic
+1..256 sanity here; per-axis base-2 validation is S3.5), Unicorns keep fixed dims.
+An unparseable `board` value (or an `Unknown` fallback) yields a safe 256×64 bitmap8
+surface with `invalid = true` rather than crashing.
 
 ### S3.2 — Unified display implementation ([#18](https://github.com/elaurijssens/gu-multiverse/issues/18))
 *As a developer, I want a single display implementation so there's no per-board copy-paste.*
