@@ -23,6 +23,13 @@ flag), and double buffering (E6) for the load-then-flip pattern.
 - **Compile in, toggle via k/v:** per the vision, WiFi support may be compiled
   into the image and **enabled/disabled via a k/v key** (E2) rather than a
   separate build. Confirm the RAM/flash cost of always compiling it in.
+- **Build-time capability + runtime refusal:** WiFi hardware presence is a
+  **build/variant fact**, not a `BoardKind` one — i75 vs i75**W** and Plasma vs
+  Plasma-**W** share a `BoardKind` (E3) but differ in whether they carry the CYW43.
+  So WiFi capability is decided when the image is built (with/without `pico_cyw43_arch`);
+  the `wifi` key **enables** it at runtime, and the firmware **refuses to enable and
+  reports a diagnostic** when the running image has no WiFi hardware. (Chip family —
+  RP2040/RP2350 — is likewise a build-time choice, like the board is today.)
 - **Credentials:** SSID/passphrase storage — likely k/v keys (note: 64-byte value
   limit; a passphrase fits, an enterprise cert does not). Security of stored
   creds is an open question.

@@ -110,6 +110,14 @@ surface with `invalid = true` rather than crashing.
     S3.1 `invalid` path and S3.3's "selecting an unlinked driver fails gracefully" AC.
   - Ship a **user-facing warning not to operate the board switches** on unified
     firmware (the firmware never reads them anyway).
+- **Plasma driver integration (prep for S3.3):** unlike the Unicorn/Hub75 drivers,
+  Pimoroni's `WS2812` (`drivers/plasma/ws2812.hpp`) has **no `update(PicoGraphics*)`** —
+  it's `set_rgb(index, r, g, b)` + `update()`. So the Plasma path renders into the
+  usual `PenRGB888` framebuffer, then `display::update()` walks the pixels into
+  `ws2812.set_rgb()` (default GRB, `DATA = GPIO 15`). Treat Plasma as a linear strip
+  (`width 1 × length N`, `length` from the `height` k/v key). Link the WS2812 driver
+  into the RP2350 image so a **Plasma 2350 W** works on arrival (hardware not yet on
+  the bench — build/compile-verified only until then).
 
 ## Out of scope
 
