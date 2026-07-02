@@ -49,6 +49,7 @@ add_executable(${NAME}
     ${SRC_DIR}/main.cpp
     ${SRC_DIR}/command/command_core.cpp
     ${SRC_DIR}/command/usb_cdc_transport.cpp
+    ${SRC_DIR}/config/kv_store.cpp
     ${SRC_DIR}/cdc_uart.cpp
     ${SRC_DIR}/get_serial.cpp
     ${SRC_DIR}/usb_descriptors.cpp

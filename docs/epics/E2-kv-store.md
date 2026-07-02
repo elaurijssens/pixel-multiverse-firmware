@@ -88,9 +88,9 @@ Proposed 4-byte ids (finalise in S2.2):
 ### S2.2 — In-RAM store API ([#13](https://github.com/elaurijssens/gu-multiverse/issues/13))
 *As a developer, I want a clean `put/get/del/iterate` API so the rest of the firmware reads config without touching flash directly.*
 **Acceptance criteria**
-- [ ] Header exposes `put(key, value)`, `get(key) -> value?`, `del(key)`, and iteration.
-- [ ] Keys are normalised (space-padded/truncated to 8) consistently in one place.
-- [ ] Unit-testable on host where feasible (logic separated from flash I/O).
+- [x] Header exposes `put(key, value)`, `get(key) -> value?`, `del(key)`, and iteration. — `kv::Store` in `src/config/kv_store.hpp`.
+- [x] Keys are normalised (space-padded/truncated to 8) consistently in one place. — `Store::normalize_key`, used by put/get/del.
+- [x] Unit-testable on host where feasible (logic separated from flash I/O). — no SDK/flash deps; `test/kv_store_test.cpp` passes (`seq`/`crc` left to S2.3).
 
 ### S2.3 — Flash persistence ([#14](https://github.com/elaurijssens/gu-multiverse/issues/14))
 *As a user, I want my configuration to survive power cycles.*
