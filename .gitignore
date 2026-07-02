@@ -10,3 +10,6 @@ __pycache__/
 lib/dist
 lib/build
 *.egg-info
+
+# rights-encumbered local test asset — must not be published
+tools/samples/animated2.gif
