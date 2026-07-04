@@ -46,9 +46,8 @@ int main(void) {
     //cdc_uart_init(); // From cdc_uart.c
     tusb_init(); // Tiny USB?
 
-    display::init();
-
-    kv::config_boot();       // load persisted config from flash (formats on first use)
+    kv::config_boot();       // load persisted config from flash first (formats on first use)
+    display::init();         // reads panel dimensions from the config store
     kv::register_commands(); // put/get/del, before run() registers the built-ins
 
     command_core::UsbCdcTransport transport;

@@ -45,7 +45,7 @@ command_core::Handler lookup(const uint8_t id[COMMAND_LEN]) {
 // --- Handlers (one per command; each reads its own payload) -----------------
 
 void handle_data(command_core::Transport& transport) {
-    if (transport.read(display::buffer, display::BUFFER_SIZE) == display::BUFFER_SIZE) {
+    if (transport.read(display::buffer, display::buffer_size()) == display::buffer_size()) {
         display::update();
     }
 }
@@ -60,7 +60,7 @@ void handle_zdat(command_core::Transport& transport) {
     }
 
     // Ensure compressed_size is within reasonable limits
-    const size_t MAX_COMPRESSED_SIZE = display::BUFFER_SIZE;  // Adjust based on expected maximum
+    const size_t MAX_COMPRESSED_SIZE = display::buffer_size();  // Adjust based on expected maximum
     if (compressed_size > MAX_COMPRESSED_SIZE) {
         // Error handling: compressed data too large
         return;
@@ -81,7 +81,7 @@ void handle_zdat(command_core::Transport& transport) {
     }
 
     // Decompress the data using zlib
-    uLongf decompressed_size = display::BUFFER_SIZE;  // Expected size of decompressed data
+    uLongf decompressed_size = display::buffer_size();  // Expected size of decompressed data
     int ret = uncompress(display::buffer, &decompressed_size, compressed_data, compressed_size);
 
     free(compressed_data);  // Free the compressed data buffer
@@ -93,7 +93,7 @@ void handle_zdat(command_core::Transport& transport) {
     }
 
     // Verify that the decompressed size is as expected
-    if (decompressed_size != display::BUFFER_SIZE) {
+    if (decompressed_size != display::buffer_size()) {
         // Error handling: unexpected decompressed size
         return;
     }
