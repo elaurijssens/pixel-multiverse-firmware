@@ -24,11 +24,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { board: i75, chip: rp2040, pico_board: pico }
-          - { board: i75, chip: rp2350, pico_board: pico2 }
-          # Plasma joins here once E10 lands src/display/plasma:
-          # - { board: plasma, chip: rp2040,  pico_board: pico }
-          # - { board: plasma, chip: rp2350, pico_board: pico2_w }
+          - { board: i75,     chip: rp2040, pico_board: pico }
+          - { board: i75,     chip: rp2350, pico_board: pico2 }
+          - { board: plasma,  chip: rp2040, pico_board: pico }
+          - { board: plasma,  chip: rp2350, pico_board: pico2 }
+          # (a wifi Plasma 2350W / pico2_w variant can join when E7 lands)
 
     runs-on: ubuntu-latest
 
