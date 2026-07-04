@@ -91,9 +91,9 @@ cy   = py
 
 ### S11.3 — Host tooling + parameter exposure ([#54](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/54))
 *As a host, I want to set the layout from the bench and read the geometry from the board.*
-- [ ] `multiverse-ctl.sh layout PWxPH COLSxROWS [chain]` — sets panel+layout, computes+stores display, validates, reboots, runs the layout self-test
-- [ ] `dims WxH` reframed as the 1×1 shortcut (panel = display, layout 1×1)
-- [ ] pixel-multiverse ([#3](https://github.com/elaurijssens/pixel-multiverse/issues/3)) reads `panel`/`layout`/`chain` and folds the streamed image to match
+- [x] `multiverse-ctl.sh layout PWxPH COLSxROWS [chain]` — sets panel+layout, computes+stores display, validates, reboots, runs the layout self-test (verified: `layout 128x64 1x2` reproduces the stack in one command)
+- [x] `dims WxH` reframed as the 1×1 shortcut (panel = display, layout 1×1)
+- [ ] pixel-multiverse ([#3](https://github.com/elaurijssens/pixel-multiverse/issues/3)) reads `panel`/`layout`/`chain` and folds the streamed image to match — **cross-repo**; finalized geometry contract handed to #3
 
 ## Technical notes
 
