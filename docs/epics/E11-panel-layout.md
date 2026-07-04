@@ -2,6 +2,12 @@
 
 **Phase:** 2 · **Depends on:** E9 (S9.4/S9.5 runtime i75 dimensions) · **Issue:** [#51](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/51)
 
+> **Status:** firmware side complete — S11.1–S11.3 landed and verified on hardware
+> (i75w, two 128×64 panels as a 1×2 stack rig). The epic stays open only for the
+> host-side image fold in pixel-multiverse
+> ([#3](https://github.com/elaurijssens/pixel-multiverse/issues/3)), which has the
+> finalized geometry contract.
+
 ## Goal
 
 Separate **panel size**, **display layout**, and the raw **hub75 chain** so an i75
