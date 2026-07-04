@@ -107,21 +107,21 @@ falling back to the default when `get` returns not-found.
 
 ## User stories
 
-### S2.1 — Define the record format ([#12](https://github.com/elaurijssens/gu-multiverse/issues/12))
+### S2.1 — Define the record format ([#12](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/12))
 *As a developer, I want a fixed on-flash record layout so reads/writes are simple and forward-compatible.*
 **Acceptance criteria**
 - [x] Record layout documented (key width, value width, padding, total size, endianness if any). — see Data model above + `src/config/kv_format.hpp`.
 - [x] Power-of-two alignment decision made and recorded with rationale. — 128-byte record (key 8 + value 64 + seq 4 + key_len/value_len + reserved 46 + crc 4).
 - [x] A magic/version marker exists at the head of the region so future format changes are detectable. — `kv::Header` (`magic "MVKV"` + version + record_size).
 
-### S2.2 — In-RAM store API ([#13](https://github.com/elaurijssens/gu-multiverse/issues/13))
+### S2.2 — In-RAM store API ([#13](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/13))
 *As a developer, I want a clean `put/get/del/iterate` API so the rest of the firmware reads config without touching flash directly.*
 **Acceptance criteria**
 - [x] Header exposes `put(key, value)`, `get(key) -> value?`, `del(key)`, and iteration. — `kv::Store` in `src/config/kv_store.hpp`.
 - [x] Keys are normalised (space-padded/truncated to 8) consistently in one place. — `Store::normalize_key`, used by put/get/del.
 - [x] Unit-testable on host where feasible (logic separated from flash I/O). — no SDK/flash deps; `test/kv_store_test.cpp` passes (`seq`/`crc` left to S2.3).
 
-### S2.3 — Flash persistence ([#14](https://github.com/elaurijssens/gu-multiverse/issues/14))
+### S2.3 — Flash persistence ([#14](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/14))
 *As a user, I want my configuration to survive power cycles.*
 **Acceptance criteria**
 - [x] Store loads from flash at boot (highest-`seq` valid record per key) and persists changes. — `kv::Log::load`/`put`/`del` (`src/config/kv_log.cpp`); host test + on-device boot/reboot.
@@ -130,14 +130,14 @@ falling back to the default when `get` returns not-found.
 - [x] Interrupt/second-core safety for writes implemented per SDK rules. — single-core; `save_and_disable_interrupts()`/`restore_interrupts()` around erase/program (`kv_flash.cpp`).
 - [x] Power-loss during write does not brick the device. — per-record CRC-32: a torn append fails its CRC and the prior record stays authoritative (host test simulates a truncated page); a corrupt/foreign region → format → empty/defaults. **Known limitation:** a power loss *mid-compaction* can lose config → boots empty (defaults, not bricked); a two-region ping-pong compaction is the future hardening.
 
-### S2.4 — `put`/`get`/`del` commands ([#15](https://github.com/elaurijssens/gu-multiverse/issues/15))
+### S2.4 — `put`/`get`/`del` commands ([#15](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/15))
 *As a host, I want to read and write config over the existing transport.*
 **Acceptance criteria**
 - [x] The three commands are registered with the E1 core and round-trip correctly. — `kv::register_commands()` (`src/config/kv_commands.cpp`); set→get verified on i75w, and set→reboot→get confirms flash persistence end-to-end.
 - [x] `get` of a missing key returns a clear not-found response. — status byte `0` → helper prints `not found`.
 - [x] Host-side helper/example demonstrates setting and reading a key. — `tools/multiverse-config.py` via `multiverse-ctl.sh set|get|del`.
 
-### S2.5 — Well-known keys catalogue ([#16](https://github.com/elaurijssens/gu-multiverse/issues/16))
+### S2.5 — Well-known keys catalogue ([#16](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/16))
 *As a developer, I want a documented set of reserved keys so config is consistent across boards.*
 **Acceptance criteria**
 - [x] A table of reserved keys is documented (e.g. `board`, `width`, `height`, `wifi`, …) with value encodings. — see **Well-known keys** above.

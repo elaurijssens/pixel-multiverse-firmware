@@ -25,32 +25,32 @@ valuable for debugging the runtime-config model from E2/E3 in the field.
 
 ## User stories
 
-### S5.1 — Text buffer + renderer ([#25](https://github.com/elaurijssens/gu-multiverse/issues/25))
+### S5.1 — Text buffer + renderer ([#25](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/25))
 *As a developer, I want a multiline text buffer rendered to the display so diagnostics aren't one-line-only.*
 **Acceptance criteria**
 - [ ] Console computes rows/cols from current dimensions + font.
 - [ ] `print`/`println`/`clear` work; output wraps at display width.
 - [ ] Renders correctly on small (16×16) and large (256×64) displays.
 
-### S5.2 — Scrolling ([#26](https://github.com/elaurijssens/gu-multiverse/issues/26))
+### S5.2 — Scrolling ([#26](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/26))
 *As a user, I want new lines to scroll old ones off so a long log stays readable.*
 **Acceptance criteria**
 - [ ] When the buffer fills, oldest lines scroll off the top.
 - [ ] Scroll behaviour is smooth/legible at the target font sizes.
 
-### S5.3 — Host text command ([#27](https://github.com/elaurijssens/gu-multiverse/issues/27))
+### S5.3 — Host text command ([#27](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/27))
 *As a host, I want to send text to display for diagnostics.*
 **Acceptance criteria**
 - [ ] A command (via E1) appends/sets console text from the host.
 - [ ] Coexists with image (`data`/`zdat`) commands — switching between graphics and console mode is defined.
 
-### S5.4 — Boot/config diagnostics ([#28](https://github.com/elaurijssens/gu-multiverse/issues/28))
+### S5.4 — Boot/config diagnostics ([#28](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/28))
 *As a board owner, I want the device to show its config on boot so I can verify setup.*
 **Acceptance criteria**
 - [ ] On boot (or on demand), the console can show board type, dimensions, WiFi state from the k/v store.
 - [ ] Replaces/augments the current `"rdy"` message.
 
-### S5.5 — Size-adaptive info/status self-test (line-by-line + marquee) ([#41](https://github.com/elaurijssens/gu-multiverse/issues/41)) · low priority
+### S5.5 — Size-adaptive info/status self-test (line-by-line + marquee) ([#41](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/41)) · low priority
 *As a board owner, I want the info/status self-test to adapt to any panel size — stacking fields line-by-line on tall panels and marquee-scrolling on tiny ones (e.g. Stellar 16×16) — so the same boot/status screen works on every board.*
 **Acceptance criteria**
 - [ ] The info self-test renders its fields (firmware version today; board type, dimensions, IP/WiFi later) as multiple lines on panels tall enough to fit them.

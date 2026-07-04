@@ -25,33 +25,33 @@ To add WiFi later and k/v commands now, parsing/dispatch must be decoupled from 
 
 ## User stories
 
-### S1.1 — Extract the loop into a module ([#8](https://github.com/elaurijssens/gu-multiverse/issues/8))
+### S1.1 — Extract the loop into a module ([#8](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/8))
 *As a developer, I want the command loop in its own translation unit so that `main.cpp` only does setup.*
 **Acceptance criteria**
 - [x] New module (e.g. `src/command/command_core.{hpp,cpp}`) owns the `multiverse:` framing, command read, and dispatch.
 - [x] `main.cpp` calls a single entry point and contains no `if(command == ...)` chains.
 - [x] Behaviour is byte-for-byte identical to today for all existing commands.
 
-### S1.2 — Define a transport interface ([#9](https://github.com/elaurijssens/gu-multiverse/issues/9))
+### S1.2 — Define a transport interface ([#9](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/9))
 *As a developer, I want byte I/O behind an interface so that the same commands can run over USB or WiFi.*
 **Acceptance criteria**
 - [x] A `Transport` interface with at least: read-with-timeout, prefix-wait, and write.
 - [x] A USB CDC implementation wraps the existing `cdc_*` helpers; no behavioural change.
 - [x] The core depends only on the interface, not on TinyUSB directly.
 
-### S1.3 — Command registry / dispatch table ([#10](https://github.com/elaurijssens/gu-multiverse/issues/10))
+### S1.3 — Command registry / dispatch table ([#10](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/10))
 *As a developer, I want commands registered in a table so that adding a command doesn't mean editing a giant if-chain.*
 **Acceptance criteria**
 - [x] Handlers are registered by 4-byte id.
 - [x] Adding a new command is one registration + one handler function.
 - [x] Unknown/garbage command ids are skipped without hanging the loop.
 
-### S1.4 — Migrate existing commands ([#11](https://github.com/elaurijssens/gu-multiverse/issues/11))
+### S1.4 — Migrate existing commands ([#11](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/11))
 *As a user, I want all current commands to keep working after the refactor.*
 **Acceptance criteria**
 - [x] `data`, `zdat`, `note`, `_rst`, `_usb` all behave exactly as before (handler bodies extracted verbatim in S1.3; each verified on i75w hardware).
 - [x] The commented-out `wave` command is **dropped** — no host tooling ever sent it and `note` covers synth audio; `display::play_audio()` stays in the API for a future re-add.
-- [x] Manual smoke test passes — run via `tools/multiverse-ctl.sh` (`data`/`zdat`/`test`/`note`/`_rst`/`_usb`); the bundled `examples/*.py` target the MicroPython firmware, not this fork (see Technical notes, [#42](https://github.com/elaurijssens/gu-multiverse/issues/42)).
+- [x] Manual smoke test passes — run via `tools/multiverse-ctl.sh` (`data`/`zdat`/`test`/`note`/`_rst`/`_usb`); the bundled `examples/*.py` target the MicroPython firmware, not this fork (see Technical notes, [#42](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/42)).
 
 ## Technical notes
 
@@ -65,7 +65,7 @@ To add WiFi later and k/v commands now, parsing/dispatch must be decoupled from 
   byte order `B,G,R,0`). Host tooling for this firmware lives in `tools/`
   (`multiverse-ctl.sh`, `multiverse-image.py`), which is what the S1.4 smoke test
   used. Growing that into a native client/demo set is tracked by
-  [#42](https://github.com/elaurijssens/gu-multiverse/issues/42) (backlog).
+  [#42](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/42) (backlog).
 
 ## Out of scope
 

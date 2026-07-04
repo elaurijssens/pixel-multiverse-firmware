@@ -43,26 +43,26 @@ flag), and double buffering (E6) for the load-then-flip pattern.
 
 ## User stories (provisional — refine when the epic starts)
 
-### S7.1 — WiFi bring-up ([#32](https://github.com/elaurijssens/gu-multiverse/issues/32))
+### S7.1 — WiFi bring-up ([#32](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/32))
 *As a board owner, I want a W board to join my network when WiFi is enabled in config.*
 **Acceptance criteria**
 - [ ] Device connects using credentials/flags from the k/v store.
 - [ ] WiFi disabled (or absent config) ⇒ device behaves exactly as a non-WiFi board.
 - [ ] Connection status visible via the diagnostic console (E5).
 
-### S7.2 — Commands over the network ([#33](https://github.com/elaurijssens/gu-multiverse/issues/33))
+### S7.2 — Commands over the network ([#33](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/33))
 *As a host, I want to send the same commands over WiFi as over USB.*
 **Acceptance criteria**
 - [ ] A network transport implements the E1 interface; existing handlers work unchanged.
 - [ ] At least the image and sync commands work over the network.
 
-### S7.3 — Multicast frame distribution ([#34](https://github.com/elaurijssens/gu-multiverse/issues/34))
+### S7.3 — Multicast frame distribution ([#34](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/34))
 *As an operator, I want to send one frame to many boards at once.*
 **Acceptance criteria**
 - [ ] Boards subscribe to a multicast group (configurable via k/v).
 - [ ] A multicast frame loads into each board's back buffer (E6).
 
-### S7.4 — Synchronised flip ([#35](https://github.com/elaurijssens/gu-multiverse/issues/35))
+### S7.4 — Synchronised flip ([#35](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/35))
 *As an operator, I want all boards to show the new frame at the same time.*
 **Acceptance criteria**
 - [ ] A sync signal flips all subscribed boards' buffers together.

@@ -47,7 +47,7 @@ is already uniform across boards — it just needs one implementation behind it.
 
 ## User stories
 
-### S3.1 — Board descriptor + selection ([#17](https://github.com/elaurijssens/gu-multiverse/issues/17))
+### S3.1 — Board descriptor + selection ([#17](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/17))
 *As the firmware, I want to build a board descriptor from the k/v store at boot so I can drive the right hardware.*
 **Acceptance criteria**
 - [x] Descriptor struct defined; populated from k/v keys (`board`, `width`, `height`, …). — `display::BoardDescriptor` + `describe()` in `src/display/board_config.{hpp,cpp}`.
@@ -62,28 +62,28 @@ plasma 1×64); i75/Plasma then override from the `width`/`height` keys (basic
 An unparseable `board` value (or an `Unknown` fallback) yields a safe 256×64 bitmap8
 surface with `invalid = true` rather than crashing.
 
-### S3.2 — Unified display implementation ([#18](https://github.com/elaurijssens/gu-multiverse/issues/18))
+### S3.2 — Unified display implementation ([#18](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/18))
 *As a developer, I want a single display implementation so there's no per-board copy-paste.*
 **Acceptance criteria**
 - [ ] One implementation replaces the four `<board>.cpp` files for the shared API.
 - [ ] `info()` uses the descriptor's font; `play_*` no-op cleanly when `has_audio` is false.
 - [ ] Output is visually identical to the current per-board firmware for each board.
 
-### S3.3 — Driver dispatch (incl. Hub75 ISR) ([#19](https://github.com/elaurijssens/gu-multiverse/issues/19))
+### S3.3 — Driver dispatch (incl. Hub75 ISR) ([#19](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/19))
 *As the firmware, I want driver calls routed to the selected driver, including Hub75's DMA ISR.*
 **Acceptance criteria**
 - [ ] `init/update` dispatch to the active driver.
 - [ ] Hub75 path wires `dma_complete` ISR only when Hub75 is selected.
 - [ ] Selecting a driver not linked into the current image is impossible or fails gracefully.
 
-### S3.4 — Runtime buffer sizing ([#20](https://github.com/elaurijssens/gu-multiverse/issues/20))
+### S3.4 — Runtime buffer sizing ([#20](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/20))
 *As the firmware, I want the framebuffer sized correctly for the configured dimensions.*
 **Acceptance criteria**
 - [ ] Buffer accommodates the configured W×H×4 within the chip's RAM budget.
 - [ ] The largest supported i75 mode fits on its target chip family.
 - [ ] Data commands (`data`/`zdat`) use the runtime size, not a compile-time constant.
 
-### S3.5 — Configurable i75 / Plasma dimensions ([#21](https://github.com/elaurijssens/gu-multiverse/issues/21))
+### S3.5 — Configurable i75 / Plasma dimensions ([#21](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/21))
 *As a board owner, I want to set my i75 or Plasma resolution via the k/v store.*
 **Acceptance criteria**
 - [ ] i75 width/height and Plasma length read from k/v keys with validation (base-2 ranges).

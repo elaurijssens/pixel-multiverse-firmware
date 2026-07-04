@@ -28,20 +28,20 @@ of the flip is E7.
 
 ## User stories
 
-### S6.1 — Back buffer + flip ([#29](https://github.com/elaurijssens/gu-multiverse/issues/29))
+### S6.1 — Back buffer + flip ([#29](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/29))
 *As the firmware, I want to write to a hidden buffer and flip it on command.*
 **Acceptance criteria**
 - [ ] `data`/`zdat` can target the back buffer.
 - [ ] A `sync`/flip command swaps and updates the display atomically.
 - [ ] No tearing/partial-frame on flip.
 
-### S6.2 — Backwards-compatible immediate mode ([#30](https://github.com/elaurijssens/gu-multiverse/issues/30))
+### S6.2 — Backwards-compatible immediate mode ([#30](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/30))
 *As an existing host, I want current behaviour to keep working without sending a flip.*
 **Acceptance criteria**
 - [ ] A mode (default or explicit) preserves load-then-show-immediately.
 - [ ] Existing examples work unchanged, or with a documented one-line change.
 
-### S6.3 — Memory budget per family ([#31](https://github.com/elaurijssens/gu-multiverse/issues/31))
+### S6.3 — Memory budget per family ([#31](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/31))
 *As a developer, I want double buffering to fit within each chip's RAM.*
 **Acceptance criteria**
 - [ ] Two buffers at the max supported dimensions fit on RP2040 and RP2350 respectively (or limits are documented per family).
