@@ -9,6 +9,8 @@ Wire protocol (see src/config/kv_commands.cpp):
   put : klen(1) key[klen] vlen(1) value[vlen] -> status(1)   (1 ok / 0 fail)
   get : klen(1) key[klen]                      -> 1, vlen(1), value[vlen]  |  0
   del : klen(1) key[klen]                      -> status(1)   (1 deleted / 0 absent)
+  vers: (no payload)                           -> len(2, LE), ascii[len]  (identity)
+  keys: (no payload)                           -> len(2, LE), ascii[len]  (k/v dump)
 """
 
 import argparse
@@ -55,27 +57,31 @@ def read_exact(fd, n, timeout=2.0):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("mode", choices=["set", "get", "del"])
+    ap.add_argument("mode", choices=["set", "get", "del", "vers", "keys"])
     ap.add_argument("--device", required=True)
-    ap.add_argument("key")
+    ap.add_argument("key", nargs="?")
     ap.add_argument("value", nargs="?")
     args = ap.parse_args()
 
-    key = args.key.encode()
-    if not (1 <= len(key) <= KEY_MAX):
-        sys.exit(f"error: key must be 1..{KEY_MAX} bytes, got {len(key)}")
-
-    if args.mode == "set":
-        if args.value is None:
-            sys.exit("error: 'set' needs a value")
-        value = args.value.encode()
-        if len(value) > VALUE_MAX:
-            sys.exit(f"error: value must be 0..{VALUE_MAX} bytes, got {len(value)}")
-        req = PREFIX + b"put " + bytes([len(key)]) + key + bytes([len(value)]) + value
-    elif args.mode == "get":
-        req = PREFIX + b"get " + bytes([len(key)]) + key
-    else:  # del
-        req = PREFIX + b"del " + bytes([len(key)]) + key
+    if args.mode in ("vers", "keys"):
+        req = PREFIX + (b"vers" if args.mode == "vers" else b"keys")
+    else:
+        if args.key is None:
+            sys.exit(f"error: '{args.mode}' needs a key")
+        key = args.key.encode()
+        if not (1 <= len(key) <= KEY_MAX):
+            sys.exit(f"error: key must be 1..{KEY_MAX} bytes, got {len(key)}")
+        if args.mode == "set":
+            if args.value is None:
+                sys.exit("error: 'set' needs a value")
+            value = args.value.encode()
+            if len(value) > VALUE_MAX:
+                sys.exit(f"error: value must be 0..{VALUE_MAX} bytes, got {len(value)}")
+            req = PREFIX + b"put " + bytes([len(key)]) + key + bytes([len(value)]) + value
+        elif args.mode == "get":
+            req = PREFIX + b"get " + bytes([len(key)]) + key
+        else:  # del
+            req = PREFIX + b"del " + bytes([len(key)]) + key
 
     fd = open_raw(args.device)
     try:
@@ -84,6 +90,15 @@ def main():
             termios.tcdrain(fd)
         except termios.error:
             pass
+
+        if args.mode in ("vers", "keys"):
+            hdr = read_exact(fd, 2)
+            if len(hdr) < 2:
+                sys.exit("error: no response from board (timeout)")
+            n = hdr[0] | (hdr[1] << 8)
+            body = read_exact(fd, n) if n else b""
+            sys.stdout.write(body.decode("utf-8", "replace"))
+            return
 
         status = read_exact(fd, 1)
         if not status:

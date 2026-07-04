@@ -17,6 +17,7 @@
 #   multiverse-ctl.sh layout PWxPH CxR [chain] [device]
 #                                          Multi-panel grid, reboot, verify (test 60).
 #                                          chain: raster-td|serpentine-td|raster-bu|serpentine-bu
+#   multiverse-ctl.sh diag [device]        Firmware version + k/v dump (troubleshoot)
 #   multiverse-ctl.sh flash [NN] [device]  Build, version-stamp, flash, then self-test
 #   multiverse-ctl.sh list                 List detected Multiverse ports
 #
@@ -62,7 +63,7 @@ if [ -z "${MV_PYTHON:-}" ] && [ -x "$REPO_ROOT/.venv/bin/python" ]; then
 fi
 
 usage() {
-  sed -n '3,49p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,50p' "$0" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -358,6 +359,28 @@ layout() {
   echo "==> done: ${grid} of ${panel} → ${DW}x${DH} (${chain})"
 }
 
+# diag [device] — firmware identity (vers) + k/v store dump (keys), for troubleshooting.
+diag() {
+  local device="${1:-$(first_port)}"
+  if [ -z "$device" ]; then
+    echo "error: no Multiverse serial port found (plug in or pass a device)." >&2
+    detect_ports | sed 's/^/         /' >&2
+    exit 1
+  fi
+  [ -e "$device" ] || { echo "error: device '$device' does not exist." >&2; exit 1; }
+
+  echo "== Multiverse diagnostics =="
+  echo "port:  $device"
+  echo
+  echo "-- firmware --"
+  "${MV_PYTHON:-python3}" "$SCRIPT_DIR/multiverse-config.py" vers --device "$device" 2>&1 | sed 's/^/  /'
+  echo
+  echo "-- config store --"
+  local dump
+  dump="$("${MV_PYTHON:-python3}" "$SCRIPT_DIR/multiverse-config.py" keys --device "$device" 2>&1)"
+  if [ -n "$dump" ]; then printf '%s\n' "$dump" | sed 's/^/  /'; else echo "  (store empty)"; fi
+}
+
 case "${1:-}" in
   reset|rst|_rst) send "_rst" "${2:-$(first_port)}" ;;
   usb|bootsel|_usb) send "_usb" "${2:-$(first_port)}" ;;
@@ -374,6 +397,7 @@ case "${1:-}" in
   del) config_cmd del "${3:-$(first_port)}" "${2:-}" ;;
   dims) dims "${2:-}" "${3:-}" ;;
   layout) layout "${2:-}" "${3:-}" "${4:-}" "${5:-}" ;;
+  diag|diagnostics) diag "${2:-}" ;;
   flash) flash "${2:-20}" "${3:-}" ;;
   list|ls)
     ports="$(detect_ports)"

@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "display.hpp"
+#include "version.hpp"
 #include "pico/stdlib.h"
 #include "pico/bootrom.h"
 #include "hardware/sync.h"
@@ -160,6 +161,22 @@ void handle_live(command_core::Transport& transport) {
     deferred = false;
 }
 
+// Diagnostics / E8 S8.2: report firmware identity + geometry as a u16
+// length-prefixed ASCII blob ("key=value\n" lines). Read by `multiverse-ctl diag`.
+void handle_vers(command_core::Transport& transport) {
+    static char buf[256];
+    int n = snprintf(buf, sizeof(buf),
+                     "board=%s\nversion=%s\ndisplay=%dx%d\nbufsize=%u\n",
+                     MULTIVERSE_BOARD_ID, MULTIVERSE_VERSION,
+                     display::width(), display::height(),
+                     static_cast<unsigned>(display::buffer_size()));
+    if (n < 0) n = 0;
+    if (n > static_cast<int>(sizeof(buf))) n = static_cast<int>(sizeof(buf));
+    uint8_t hdr[2] = { static_cast<uint8_t>(n & 0xff), static_cast<uint8_t>((n >> 8) & 0xff) };
+    transport.write(hdr, 2);
+    transport.write(reinterpret_cast<const uint8_t*>(buf), static_cast<size_t>(n));
+}
+
 void register_builtins() {
     static bool done = false;
     if (done) return;
@@ -171,6 +188,7 @@ void register_builtins() {
     command_core::register_command("flip", handle_flip);
     command_core::register_command("hold", handle_hold);
     command_core::register_command("live", handle_live);
+    command_core::register_command("vers", handle_vers);
     command_core::register_command("_rst", handle_rst);
     command_core::register_command("_usb", handle_usb);
 }

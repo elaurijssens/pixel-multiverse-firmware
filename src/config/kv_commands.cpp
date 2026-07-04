@@ -75,12 +75,34 @@ void handle_del(Transport& t) {
     write_u8(t, ok ? 1 : 0);
 }
 
+// Diagnostics: dump the live store as a u16 length-prefixed ASCII blob, one
+// "key=value" line per record. Non-printable value bytes render as '.'.
+void handle_keys(Transport& t) {
+    static char buf[2560];
+    size_t pos = 0;
+    size_t n = config().count();
+    for (size_t i = 0; i < n; i++) {
+        const Record& r = config().at(i);
+        for (size_t k = 0; k < r.key_len && pos < sizeof(buf); k++) buf[pos++] = r.key[k];
+        if (pos < sizeof(buf)) buf[pos++] = '=';
+        for (size_t v = 0; v < r.value_len && pos < sizeof(buf); v++) {
+            uint8_t c = r.value[v];
+            buf[pos++] = (c >= 0x20 && c < 0x7f) ? static_cast<char>(c) : '.';
+        }
+        if (pos < sizeof(buf)) buf[pos++] = '\n';
+    }
+    uint8_t hdr[2] = { static_cast<uint8_t>(pos & 0xff), static_cast<uint8_t>((pos >> 8) & 0xff) };
+    t.write(hdr, 2);
+    if (pos) t.write(reinterpret_cast<const uint8_t*>(buf), pos);
+}
+
 } // namespace
 
 void register_commands() {
     command_core::register_command("put ", handle_put);
     command_core::register_command("get ", handle_get);
     command_core::register_command("del ", handle_del);
+    command_core::register_command("keys", handle_keys);
 }
 
 } // namespace kv
