@@ -35,6 +35,7 @@
 #include "config/kv_flash.hpp"
 #include "config/kv_commands.hpp"
 #include "net/wifi.hpp"
+#include "recovery/recovery.hpp"
 
 // UART0 for Picoprobe debug
 // UART1 for picoprobe to target device
@@ -47,6 +48,7 @@ int main(void) {
     //cdc_uart_init(); // From cdc_uart.c
     tusb_init(); // Tiny USB?
 
+    recovery::check_factory_reset();  // hold the reset button at boot → wipe config first
     kv::config_boot();       // load persisted config from flash first (formats on first use)
     display::init();         // reads panel dimensions from the config store
     kv::register_commands(); // put/get/del, before run() registers the built-ins

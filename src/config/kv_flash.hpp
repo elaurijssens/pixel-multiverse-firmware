@@ -25,4 +25,8 @@ void config_boot();
 bool config_put(std::string_view key, const uint8_t* value, size_t value_len);
 bool config_del(std::string_view key);
 
+// Erase the entire config region (factory reset). Next config_boot() reformats it
+// empty → firmware boots on defaults. Safe before config_boot() or before a reboot.
+void config_factory_reset();
+
 } // namespace kv

@@ -5,6 +5,7 @@
 # Usage:
 #   multiverse-ctl.sh reset [device]       Reboot the firmware          (multiverse:_rst)
 #   multiverse-ctl.sh usb   [device]       Reboot into BOOTSEL/UF2 mode (multiverse:_usb)
+#   multiverse-ctl.sh factory [device]     Erase config → factory defaults (multiverse:_fac)
 #   multiverse-ctl.sh test NN [device]     Show self-test pattern NN    (multiverse:testNN)
 #   multiverse-ctl.sh data IMG [device]    Send image uncompressed      (multiverse:data)
 #   multiverse-ctl.sh zdat IMG [device]    Send image zlib-compressed   (multiverse:zdat)
@@ -63,7 +64,7 @@ if [ -z "${MV_PYTHON:-}" ] && [ -x "$REPO_ROOT/.venv/bin/python" ]; then
 fi
 
 usage() {
-  sed -n '3,50p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,51p' "$0" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -384,6 +385,7 @@ diag() {
 case "${1:-}" in
   reset|rst|_rst) send "_rst" "${2:-$(first_port)}" ;;
   usb|bootsel|_usb) send "_usb" "${2:-$(first_port)}" ;;
+  factory|_fac) send "_fac" "${2:-$(first_port)}" ;;
   test)
     validate_test_id "${2:-}"
     send "test${2}" "${3:-$(first_port)}"

@@ -81,4 +81,13 @@ void config_boot() {
     g_log.load(g_store);
 }
 
+void config_factory_reset() {
+    // Erase the whole config region → next config_boot() reformats it empty, so
+    // the firmware comes up on built-in defaults. Safe to call before config_boot
+    // (S12.2 button recovery) or at runtime followed by a reboot (S12.1 command).
+    if (region_overlaps_image()) { g_store.clear(); return; }
+    g_ops.erase(0, REGION_SIZE);
+    g_store.clear();
+}
+
 } // namespace kv

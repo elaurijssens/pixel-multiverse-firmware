@@ -54,6 +54,7 @@ add_executable(${NAME}
     ${SRC_DIR}/config/kv_flash.cpp
     ${SRC_DIR}/config/kv_commands.cpp
     ${SRC_DIR}/net/wifi.cpp
+    ${SRC_DIR}/recovery/recovery.cpp
     ${SRC_DIR}/cdc_uart.cpp
     ${SRC_DIR}/get_serial.cpp
     ${SRC_DIR}/usb_descriptors.cpp
@@ -84,6 +85,12 @@ endif()
 set(MULTIVERSE_BOARD_ID "${MULTIVERSE_BOARD}-${MULTIVERSE_CHIP}")
 message("Board id: ${MULTIVERSE_BOARD_ID} (wifi=${MULTIVERSE_WIFI})")
 
+# Factory-reset button (E12 S12.2): held at boot → erase config before it's read.
+# Board-specific pin; undefined boards get a no-op recovery check.
+if(MULTIVERSE_BOARD STREQUAL "plasma")
+    set(MULTIVERSE_RESET_BTN 12)   # PLASMA2350_SW_A_PIN (active-low)
+endif()
+
 target_compile_definitions(
     ${NAME} PRIVATE
     MULTIVERSE_BOARD="${MULTIVERSE_BOARD}"
@@ -91,6 +98,9 @@ target_compile_definitions(
     MULTIVERSE_VERSION="${MULTIVERSE_VERSION}"
     MULTIVERSE_WIFI=${MULTIVERSE_WIFI}
 )
+if(DEFINED MULTIVERSE_RESET_BTN)
+    target_compile_definitions(${NAME} PRIVATE MULTIVERSE_RESET_BTN=${MULTIVERSE_RESET_BTN})
+endif()
 
 include(${DISPLAY_PATH})
 

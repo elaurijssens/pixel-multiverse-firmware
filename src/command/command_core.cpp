@@ -15,6 +15,7 @@
 
 #include "command/command_core.hpp"
 #include "command/transport.hpp"
+#include "config/kv_flash.hpp"
 #include "net/wifi.hpp"
 
 using namespace pimoroni;
@@ -147,6 +148,17 @@ void handle_usb(command_core::Transport& transport) {
     reset_usb_boot(0, 0);
 }
 
+// E12 S12.1: erase the config store (factory reset), then reboot onto defaults.
+void handle_fac(command_core::Transport& transport) {
+    display::info("factory reset");
+    sleep_ms(600);
+    kv::config_factory_reset();
+    sleep_ms(50);
+    save_and_disable_interrupts();
+    rosc_hw->ctrl = ROSC_CTRL_ENABLE_VALUE_ENABLE << ROSC_CTRL_ENABLE_LSB;
+    watchdog_reboot(0, 0, 0);
+}
+
 // E6: present the loaded back buffer (used with `hold` for load-then-flip sync).
 void handle_flip(command_core::Transport& transport) {
     display::update();
@@ -197,6 +209,7 @@ void register_builtins() {
     command_core::register_command("vers", handle_vers);
     command_core::register_command("_rst", handle_rst);
     command_core::register_command("_usb", handle_usb);
+    command_core::register_command("_fac", handle_fac);
 }
 
 } // namespace
