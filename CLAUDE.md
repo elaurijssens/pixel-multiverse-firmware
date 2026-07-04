@@ -104,10 +104,15 @@ GitHub Project board.
 ## Conventions
 
 - **Commits:** do not add a `Co-Authored-By` trailer.
-- **Branches:** work happens on feature branches (e.g. `feature/i75zlib`); PR to
-  `main`. Commit/push only when asked.
-- **GitHub:** the `origin` remote uses SSH (`git@github.com:...`); HTTPS pushes
-  fail here, and the OAuth token lacks `workflow` scope (can't push commits that
-  touch `.github/workflows/`). Use the `gh` CLI for issues/projects.
+- **Branches:** commit straight to `main` and push to `pmf/main` (the
+  `pixel-multiverse-firmware` repo). No feature-branch/PR flow for these stories.
+  `feature/i75zlib` is **not** our working branch — it only exists to hold the
+  original upstream state (`c6e50fb`) for the Gadgetoid PR on `origin` (the old
+  fork); never push it to `pmf`. Commit/push only when asked.
+- **GitHub:** work lives on the `pmf` remote (`pixel-multiverse-firmware`), not
+  `origin` (the `gu-multiverse` fork — leave it alone). Both remotes use SSH
+  (`git@github.com:...`); HTTPS pushes fail here, and the OAuth token lacks
+  `workflow` scope over HTTPS (SSH pushes can still touch `.github/workflows/`).
+  Use the `gh` CLI for issues/projects (`--repo elaurijssens/pixel-multiverse-firmware`).
 - When editing the roadmap, match the existing epic-doc structure (Goal, Why,
   Proposed shape, User stories with checkbox AC, Technical notes, Out of scope).
