@@ -217,6 +217,10 @@ flash() {
   # dist/. PICO_PLATFORM is rp2040 or rp2350-arm-s; keep just rp2040 / rp2350.
   chip="$(sed -n 's/^PICO_PLATFORM[^=]*=//p' "$MV_BUILD_DIR/CMakeCache.txt" | head -n1)"
   case "$chip" in rp2350*) chip=rp2350 ;; rp2040*) chip=rp2040 ;; *) chip="${chip:-unknown}" ;; esac
+  # WiFi (W) variants build for a _w board (pico2_w) — match the firmware's board id.
+  case "$(sed -n 's/^PICO_BOARD[^=]*=//p' "$MV_BUILD_DIR/CMakeCache.txt" | head -n1)" in
+    *_w) chip="${chip}w" ;;
+  esac
 
   # 1. Reconfigure + build so the embedded MULTIVERSE_VERSION is captured NOW
   #    (CMake derives it from git describe at configure time, not every build).
