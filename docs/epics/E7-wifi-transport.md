@@ -111,10 +111,18 @@ by offset, so a lost chunk is just a gap at a known place.
   `hold`/`live`); a new `frame_id` abandons an incomplete one. Verified on both i75w's via
   the identical receive path — the socket is bound `IP_ANY:mport`, so unicast `MVF1` frames
   drive it too (green→board 1, red→board 2).
-- [ ] True one-to-many **multicast delivery** + loss behaviour — pending a **flat network**.
-  On the bench the sender and two boards landed on three different subnets (`.4`/`.13`/`.15`),
-  and multicast doesn't route across L3 boundaries on an IoT LAN. Needs all devices on one
-  subnet / L2 segment (dumb switch or an AP without client isolation) to demo.
+- [x] **Multi-board streaming verified:** two i75w's rendered the same 18–24-frame
+  animation in sync from a single sender and both stayed fully responsive throughout
+  (raw diag). (An earlier apparent "hang" was a test-harness artifact — false-negative
+  responsiveness checks + the display holding the last frame + a board on an older build.)
+- [ ] True one-to-many **multicast delivery** (one packet → many) — pending a **flat
+  network**. On the bench the sender and boards landed on three different subnets
+  (`.4`/`.13`/`.15`) and multicast doesn't route across L3 on an IoT LAN; verified instead
+  via **unicast to each board** (identical receive path). Needs all devices on one subnet /
+  L2 segment (dumb switch or AP without client isolation) for the single-packet demo.
+
+**Hardening from the investigation:** lwIP uses fixed pools (no libc-malloc fragmentation
+under per-datagram pbuf churn); a command-loop watchdog is in as a safety net.
 
 ### S7.4 — Synchronised flip ([#35](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/35))
 *As an operator, I want all boards to show the new frame at the same time.*
