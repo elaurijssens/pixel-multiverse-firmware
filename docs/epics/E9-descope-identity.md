@@ -50,8 +50,8 @@ What's left is a cleanup plus a clear per-image identity.
 
 ### S9.6 — CI builds all per-board images ([#24](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/24)) · *was S4.3*
 *As a maintainer, I want CI to produce every board image.*
-- [ ] CI builds `i75-rp2040` + `i75-rp2350`, board-chip/version stamped (both verified to
-  build cold locally; awaiting the workflow's first green run on GitHub to tick)
+- [x] CI builds `i75-rp2040` + `i75-rp2350`, board-chip/version stamped (green on `main`:
+  both jobs pass, artifacts `i75-<chip>-multiverse-<version>.uf2`)
 - [ ] `plasma-rp2040` + `plasma-rp2350w` — matrix rows are wired but commented, **gated on
   E10** (no `src/display/plasma` yet); uncomment when E10 lands its display module
 - [ ] Artifacts published per release (release-attach step added; verify when a release runs)
