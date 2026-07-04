@@ -54,7 +54,8 @@ What's left is a cleanup plus a clear per-image identity.
   both jobs pass, artifacts `i75-<chip>-multiverse-<version>.uf2`)
 - [ ] `plasma-rp2040` + `plasma-rp2350w` — matrix rows are wired but commented, **gated on
   E10** (no `src/display/plasma` yet); uncomment when E10 lands its display module
-- [ ] Artifacts published per release (release-attach step added; verify when a release runs)
+- [x] Artifacts published per release (verified: `v0.1.0-rc.1` release attached both
+  `i75-rp2040`/`i75-rp2350` version-stamped UF2s — needed a `permissions: contents: write` fix)
 
 Implemented in [`.github/workflows/cmake.yml`](../../.github/workflows/cmake.yml): a
 board × chip matrix building each image the way the bench does (`PICO_BOARD` `pico` →
