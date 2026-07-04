@@ -107,17 +107,24 @@ class UdpSink:
                 return (FLAG_ZLIB, z)
         return (0, frame)
 
-    def transmit(self, enc):
+    def build_packets(self, enc):
+        # Build (don't send) this frame's datagrams under ONE frame id. The whole frame is
+        # repeated `repeat` times pass-after-pass (not chunk-adjacent) so a burst can't take
+        # out both copies; the board dedups by offset. Returning the list lets the caller
+        # interleave several boards' packets so their frames arrive together.
         flags, payload = enc
         total = len(payload)
-        # Send the whole frame `repeat` times under ONE frame id — the board dedups by
-        # offset, so a chunk lost in one pass is filled by the next. Copies are sent
-        # pass-after-pass (not chunk-adjacent) so a burst can't take out both copies.
+        pkts = []
         for _ in range(self.repeat):
             for off in range(0, total, CHUNK):
                 hdr = MVF1 + struct.pack("<HHII", self.fid & 0xFFFF, flags, total, off)
-                self.sock.sendto(hdr + payload[off:off + CHUNK], self.addr)
+                pkts.append(hdr + payload[off:off + CHUNK])
         self.fid += 1
+        return pkts
+
+    def transmit(self, enc):
+        for pkt in self.build_packets(enc):
+            self.sock.sendto(pkt, self.addr)
 
     def send(self, frame):                   # convenience: encode + transmit in one call
         self.transmit(self.encode(frame))
@@ -405,8 +412,18 @@ def main():
 
             def send_and_flip():
                 s0 = time.perf_counter()
-                for sink, enc in encoded:
-                    sink.transmit(enc)
+                # Interleave the UDP boards' chunks round-robin so their frames arrive — and
+                # thus present — together, rather than board-after-board (which leaves the
+                # first board's half a frame-transmit ahead of the next). USB is its own link.
+                udp = [(s, s.build_packets(e)) for s, e in encoded if isinstance(s, UdpSink)]
+                if udp:
+                    for i in range(max(len(p) for _, p in udp)):
+                        for s, pkts in udp:
+                            if i < len(pkts):
+                                s.sock.sendto(pkts[i], s.addr)
+                for s, e in encoded:
+                    if not isinstance(s, UdpSink):
+                        s.transmit(e)
                 if sync_on:
                     if guard > 0:
                         sleep_until(s0 + guard)   # let the unicast slices land before the flip
