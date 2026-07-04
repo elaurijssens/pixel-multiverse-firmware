@@ -11,14 +11,18 @@
 #define LWIP_NETCONN                0
 #define SYS_LIGHTWEIGHT_PROT        0
 
-// Poll mode is single-threaded, so libc malloc is safe and simpler than lwIP's heap.
-#define MEM_LIBC_MALLOC             1
-#define MEMP_MEM_MALLOC             1
+// Use lwIP's own fixed-size pools rather than libc malloc: per-datagram pbuf
+// churn fragments the newlib heap and eventually stalls an allocation (which
+// wedged the receive path under sustained frame streaming — see #59). Pools are
+// fixed-size, so no fragmentation.
+#define MEM_LIBC_MALLOC             0
+#define MEMP_MEM_MALLOC             0
 #define MEM_ALIGNMENT               4
-#define MEM_SIZE                    (16 * 1024)
+#define MEM_SIZE                    (32 * 1024)   // lwIP heap for PBUF_RAM (tx) etc.
 
 #define MEMP_NUM_UDP_PCB            8
-#define PBUF_POOL_SIZE              24
+#define MEMP_NUM_PBUF               32            // PBUF_ROM/REF descriptors
+#define PBUF_POOL_SIZE              32            // rx pbuf pool
 #define PBUF_POOL_BUFSIZE           1600
 
 #define LWIP_ARP                    1
