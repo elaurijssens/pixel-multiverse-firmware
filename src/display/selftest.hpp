@@ -145,6 +145,19 @@ inline void render(pimoroni::PicoGraphics& g, int width, int height, uint8_t id)
         }
         // 41 (INFO_SCREEN) is intentionally not drawn here — the board's
         // selftest() wrapper renders the real info() screen for it.
+        case 42: {  // dimensions check: 1px white border + "WxH" text, to eyeball
+                    // a freshly-configured panel size (edges flush, text reads right)
+            g.set_pen(255, 255, 255);
+            fill_row(g, 0, width);
+            fill_row(g, height - 1, width);
+            fill_column(g, 0, height);
+            fill_column(g, width - 1, height);
+            g.set_font("bitmap8");
+            std::string dims = std::to_string(width) + "x" + std::to_string(height);
+            int ty = height / 2 - 4; if (ty < 2) ty = 2;   // vertically centre the 8px glyphs
+            g.text(dims, Point(3, ty), width, 1.0f);
+            break;
+        }
 
         // ---- 5x: grid / addressing -------------------------------------
         case 50: {  // number each 16x16 tile; distinct hue + contrasting text

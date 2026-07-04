@@ -11,6 +11,7 @@
 #   multiverse-ctl.sh set KEY VAL [device] Set a config key             (multiverse:put )
 #   multiverse-ctl.sh get KEY [device]     Read a config key            (multiverse:get )
 #   multiverse-ctl.sh del KEY [device]     Delete a config key          (multiverse:del )
+#   multiverse-ctl.sh dims WxH [device]    Set panel size, reboot, verify (test 42)
 #   multiverse-ctl.sh flash [NN] [device]  Build, version-stamp, flash, then self-test
 #   multiverse-ctl.sh list                 List detected Multiverse ports
 #
@@ -269,6 +270,56 @@ flash() {
   echo "==> done: ${board} @ ${version}"
 }
 
+# Set panel width+height in the config store, reboot so the new geometry takes
+# effect (the framebuffer + hub75 driver are built once in init(), so dimensions
+# are read only at boot), then show test 42 to eyeball it (border flush to the
+# edges + "WxH" text). Firmware clamps width to 16..256 and height to 16..64
+# (hub75 scans at most 64 rows); we pre-validate to fail fast.
+dims() {
+  local spec="${1:-}" device="${2:-$(first_port)}"
+  local w="${spec%%x*}" h="${spec##*x}"
+  if ! printf '%s' "$w" | grep -qE '^[0-9]+$' || ! printf '%s' "$h" | grep -qE '^[0-9]+$'; then
+    echo "error: dims needs WxH, e.g. 256x64 (got '${spec}')." >&2
+    exit 1
+  fi
+  if [ "$w" -lt 16 ] || [ "$w" -gt 256 ] || [ "$h" -lt 16 ] || [ "$h" -gt 64 ]; then
+    echo "error: width must be 16..256 and height 16..64 (got ${w}x${h})." >&2
+    exit 1
+  fi
+  if [ -z "$device" ]; then
+    echo "error: no Multiverse serial port found." >&2
+    echo "       plug the board in, or pass the device explicitly. Detected ports:" >&2
+    detect_ports | sed 's/^/         /' >&2
+    exit 1
+  fi
+
+  echo "==> setting width=${w} height=${h}"
+  config_cmd set "$device" width  "$w"
+  config_cmd set "$device" height "$h"
+
+  echo "==> rebooting to apply"
+  send "_rst" "$device"
+
+  echo -n "==> waiting for board to re-enumerate"
+  local port="" i
+  for i in $(seq 1 30); do
+    port="$(first_port)"
+    [ -n "$port" ] && [ -e "$port" ] && break
+    port=""
+    echo -n "."; sleep 1
+  done
+  echo
+  if [ -z "$port" ]; then
+    echo "warning: board did not re-enumerate in time." >&2
+    echo "         once it's back, run: $(basename "$0") test 42" >&2
+    exit 1
+  fi
+  sleep 1  # let the CDC endpoint settle before writing
+  echo "==> showing dimensions (test 42)"
+  send "test42" "$port"
+  echo "==> done: ${w}x${h}"
+}
+
 case "${1:-}" in
   reset|rst|_rst) send "_rst" "${2:-$(first_port)}" ;;
   usb|bootsel|_usb) send "_usb" "${2:-$(first_port)}" ;;
@@ -280,6 +331,7 @@ case "${1:-}" in
   set) config_cmd set "${4:-$(first_port)}" "${2:-}" "${3-}" ;;
   get) config_cmd get "${3:-$(first_port)}" "${2:-}" ;;
   del) config_cmd del "${3:-$(first_port)}" "${2:-}" ;;
+  dims) dims "${2:-}" "${3:-}" ;;
   flash) flash "${2:-20}" "${3:-}" ;;
   list|ls)
     ports="$(detect_ports)"

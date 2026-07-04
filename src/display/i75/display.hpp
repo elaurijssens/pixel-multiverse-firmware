@@ -4,10 +4,14 @@
 #include "hub75.hpp"
 
 namespace display {
-    // Largest supported i75 framebuffer: 16384 px (e.g. 256×64 or 128×128) × 4 B.
-    // The actual dimensions are chosen at runtime from the k/v store (E9 S9.4/S9.5),
-    // so `buffer` is sized for the maximum and `width()`/`height()`/`buffer_size()`
-    // report the configured mode.
+    // Largest supported i75 framebuffer: 16384 px × 4 B. These are the raw hub75
+    // *chain* dimensions (width ≤ 256, height ≤ 64 — the driver's 5 address lines
+    // scan 32×2 = 64 rows), not the logical display: stacked panels (e.g. a
+    // 128×128 built from two 128×64) are configured here as their chain geometry
+    // (256×64) and folded to the logical layout host-side by the pixel-multiverse
+    // library. The actual dimensions are chosen at runtime from the k/v store
+    // (E9 S9.4/S9.5), so `buffer` is sized for the maximum and
+    // `width()`/`height()`/`buffer_size()` report the configured mode.
     constexpr int    MAX_PIXELS = 256 * 64;
     constexpr size_t BUFFER_MAX = static_cast<size_t>(MAX_PIXELS) * 4;
 

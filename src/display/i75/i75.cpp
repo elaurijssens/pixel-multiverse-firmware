@@ -40,10 +40,13 @@ namespace display {
         // always fall back to a safe 256×64.
         bool load_dims() {
             bool bad = false;
+            // Hub75 has 5 row-address lines and scans height/2 rows, so height
+            // maxes at 64 (32 addresses × 2 halves). Width is limited by the
+            // framebuffer; W×H must fit MAX_PIXELS.
             int w = read_dim("width",  256, 16, 256, bad);
-            int h = read_dim("height",  64, 16, 128, bad);
+            int h = read_dim("height",  64, 16,  64, bad);
             if (static_cast<size_t>(w) * h > static_cast<size_t>(MAX_PIXELS)) {
-                bad = true;  // e.g. 256×128 — exceeds the framebuffer
+                bad = true;  // exceeds the framebuffer
                 w = 256; h = 64;
             }
             panel_w = w;
