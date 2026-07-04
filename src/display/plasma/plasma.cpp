@@ -61,6 +61,46 @@ namespace display {
             if (s == "bgr") return CO::BGR;
             return CO::GRB;  // unknown → default
         }
+
+        // --- Strip-native self-tests (7x) -----------------------------------
+        // 70: full hue spectrum, one step per LED — colour + whole-strip check.
+        void render_spectrum() {
+            gfx->set_pen(0, 0, 0);
+            gfx->clear();
+            for (int i = 0; i < strip_len; i++) {
+                RGB c = RGB::from_hsv(static_cast<float>(i) / static_cast<float>(strip_len), 1.0f, 1.0f);
+                gfx->set_pen(c.r, c.g, c.b);
+                gfx->pixel(Point(i, 0));
+            }
+        }
+
+        // 71: a white tick every 10th LED with dim colour bands between, so the
+        // length reads off as (ticks × 10) and dead LEDs stand out.
+        void render_decades() {
+            static const uint8_t pal[6][3] = {
+                {70,0,0},{0,70,0},{0,0,70},{60,60,0},{0,60,60},{60,0,60}
+            };
+            gfx->set_pen(0, 0, 0);
+            gfx->clear();
+            for (int i = 0; i < strip_len; i++) {
+                if (i % 10 == 0) {
+                    gfx->set_pen(255, 255, 255);         // decade tick
+                } else {
+                    const uint8_t* c = pal[(i / 10) % 6];
+                    gfx->set_pen(c[0], c[1], c[2]);
+                }
+                gfx->pixel(Point(i, 0));
+            }
+        }
+
+        // 72: first LED green, last LED red, everything else off — set the length
+        // right and both ends light the physical ends (no counting).
+        void render_endpoints() {
+            gfx->set_pen(0, 0, 0);
+            gfx->clear();
+            if (strip_len >= 1) { gfx->set_pen(0, 255, 0); gfx->pixel(Point(0, 0)); }
+            if (strip_len >= 2) { gfx->set_pen(255, 0, 0); gfx->pixel(Point(strip_len - 1, 0)); }
+        }
     }
 
     int    width()       { return strip_len; }
@@ -116,6 +156,12 @@ namespace display {
             gfx->pixel(Point(0, 0));
             update();
             return;
+        }
+        // 7x: strip-native patterns; everything else falls to the generic catalogue.
+        switch (test_id) {
+            case 70: render_spectrum();  update(); return;
+            case 71: render_decades();   update(); return;
+            case 72: render_endpoints(); update(); return;
         }
         display_selftest::render(*gfx, strip_len, 1, test_id);
         update();

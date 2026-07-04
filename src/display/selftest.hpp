@@ -17,7 +17,9 @@
 //   3x  geometry         — orientation, mirroring, edges
 //   4x  text / colour    — colour rendering + font legibility
 //   5x  grid / addressing — per-tile numbering to map panel wiring
-//   6x  panel layout      — multi-panel geometry (board-rendered, see below)
+//   6x  panel layout      — multi-panel geometry (i75, board-rendered)
+//   7x  strip patterns     — linear-strip tests (plasma, board-rendered):
+//                            70 spectrum, 71 decade markers, 72 endpoints
 //
 // Every pattern is drawn through set_pen(r, g, b) rather than by packing bytes
 // into the framebuffer, so the test exercises the *panel wiring*, not our pixel
