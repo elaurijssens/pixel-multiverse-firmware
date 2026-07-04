@@ -72,11 +72,12 @@ cy   = py
 
 ### S11.1 — Panel/display/layout parameter model + validation ([#52](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/52))
 *As a board owner, I want to describe my panels, layout and display as distinct config, validated for consistency.*
-- [ ] k/v keys `panel_w`,`panel_h`,`panels_x`,`panels_y`,`display_w`,`display_h`,`chain`
-- [ ] Boot-time validation: `display == panel × layout`, `panel_h ≤ 64`,
-  `display_w·display_h ≤ 16384`, `chain` in the known set — else diagnostic + safe fallback
-- [ ] Legacy `width`/`height` still work, read as a single 1×1 panel (identity mapping)
-- [ ] Driver + framebuffer built at the derived chain geometry; `width()/height()` report the display
+- [x] k/v keys `panel_w`,`panel_h`,`panels_x`,`panels_y`,`disp_w`,`disp_h`,`chain` (keys are ≤ 8 bytes)
+- [x] Boot-time validation: `display == panel × layout`, `panel_h` even & ≤ 64,
+  `disp_w·disp_h ≤ 16384`, `chain` in the known set — else diagnostic + safe fallback
+  (verified on hardware: inconsistent `disp_w` → `cfg: bad geometry` + 256×64 fallback)
+- [x] Legacy `width`/`height` still work, read as a single 1×1 panel (identity mapping)
+- [x] Driver + framebuffer built at the derived chain geometry; `width()/height()` report the display
 
 ### S11.2 — Layout-aware self-tests ([#53](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/53))
 *As a board owner, I want self-tests that render across the physical arrangement so I can verify size and wiring.*

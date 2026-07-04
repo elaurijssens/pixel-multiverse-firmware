@@ -68,8 +68,8 @@ namespace display {
             int ph = resolve("panel_h",  "height",  64, bad);
             int nx = resolve("panels_x", nullptr,    1, bad);
             int ny = resolve("panels_y", nullptr,    1, bad);
-            int dw = resolve("display_w", nullptr, pw * nx, bad);
-            int dh = resolve("display_h", nullptr, ph * ny, bad);
+            int dw = resolve("disp_w", nullptr, pw * nx, bad);  // k/v keys are <= 8 bytes
+            int dh = resolve("disp_h", nullptr, ph * ny, bad);
             ChainOrder order = parse_chain(bad);
 
             // Range, consistency and buffer checks — see docs/epics/E11.
