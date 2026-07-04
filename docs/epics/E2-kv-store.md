@@ -102,8 +102,13 @@ app/user data.
 
 **Defaults rule:** the firmware **never auto-detects hardware** (see Principles) —
 an absent key means "use the compile-time / documented default" above; the owner
-overrides by writing the key. Consumers (E3/E4/E7) read via `kv::config().get()`,
+overrides by writing the key. Consumers (E9/E10/E7) read via `kv::config().get()`,
 falling back to the default when `get` returns not-found.
+
+**Note (v0.1.0 reshape):** board *type* is now **compile-time** (E3/E4 retired), so
+the `board` key is **vestigial** — a record for host tooling, not a runtime selector.
+The store still drives `width`/`height` (i75, E9), Plasma `length` (E10), and `wifi`
+(E7).
 
 ## User stories
 

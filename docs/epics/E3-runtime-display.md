@@ -1,5 +1,11 @@
 # E3 — Runtime display abstraction
 
+> **⚠️ RETIRED / SUPERSEDED (v0.1.0 reshape).** Dropping the Unicorns left only i75
+> (Hub75) and Plasma (WS2812) — genuinely different drivers — so runtime unification
+> isn't worth it; we keep compile-time per-board images. Survivors moved to **[E9](E9-descope-identity.md)**
+> (#43): runtime i75 dimensions + buffer sizing (#20/#21). Kept for record — do not
+> implement this epic.
+
 **Phase:** 2 · **Depends on:** E2 · **Unlocks:** E4, E5, E6
 
 ## Goal

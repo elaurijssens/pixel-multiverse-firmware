@@ -4,17 +4,24 @@ Guidance for working in this repository.
 
 ## What this is
 
-Firmware (C++/Pico SDK) plus a host-side Python library/examples for driving
-Pimoroni LED display boards (Galactic, Cosmic, Stellar Unicorn, Interstate 75,
-Plasma) from a computer over USB serial. A host streams pixel buffers; the board
-renders them.
+**pixel-multiverse firmware** (v0.1.0) — C++/Pico SDK firmware for Pimoroni LED
+display boards: **Interstate 75 / 75W** (Hub75 matrix) and **Plasma** (WS2812
+strip). A host streams pixel buffers over USB serial and the board renders them;
+the canonical host driver is the separate
+[pixel-multiverse](https://github.com/elaurijssens/pixel-multiverse) Python package.
+
+**Rebrand note:** the repo is `pixel-multiverse-firmware`, but the rename is
+**docs-only** — the wire prefix stays `multiverse:` and the build var stays
+`MULTIVERSE_BOARD` (host-protocol compatibility). Reshaped from the earlier
+`gu-multiverse` fork: the Unicorn boards and all audio were removed.
 
 ## Layout
 
-- `src/` — firmware. `src/main.cpp` holds the command loop; `src/display/<board>/`
-  has one near-duplicate display implementation per board
-  (`galactic`, `cosmic`, `stellar`, `i75`).
-- `lib/`, `examples/` — host-side Python `multiverse` library and example scripts.
+- `src/` — firmware. The command loop lives in `src/command/command_core.cpp`;
+  `src/display/<board>/` has one display implementation per board (`i75`; `plasma`
+  to come). Config store in `src/config/`.
+- `lib/`, `examples/` — **legacy** host Python from the upstream fork; superseded by
+  the pixel-multiverse package and slated for removal.
 - `tools/` — host helper scripts (see below).
 - `docs/` — **design vision and the epic/user-story roadmap** that drives
   development. Start at `docs/README.md`.
@@ -22,17 +29,17 @@ renders them.
 ## Building
 
 CMake + the Raspberry Pi Pico SDK, one image **per board** selected at compile
-time via the `MULTIVERSE_BOARD` env var (`galactic` default; also `cosmic`,
-`stellar`, `i75`). Set `PICO_SDK_PATH` to your local pico-sdk checkout. Output
-is `${board}-multiverse.uf2`.
+time via `MULTIVERSE_BOARD` (`i75`; `plasma` to come). Set `PICO_SDK_PATH` to your
+local pico-sdk checkout. Output is `${board}-multiverse.uf2`.
 
 ```bash
-MULTIVERSE_BOARD=galactic cmake -DPICO_SDK_PATH="$PICO_SDK_PATH" -G Ninja -S . -B cmake-build-debug
+MULTIVERSE_BOARD=i75 cmake -DPICO_SDK_PATH="$PICO_SDK_PATH" -G Ninja -S . -B cmake-build-debug
 cmake --build cmake-build-debug
 ```
 
-Galactic/Cosmic/i75(non-W) are **RP2040**; Stellar and i75 75W are **RP2350**
-(separate build trees, e.g. `cmake-build-*-rp2350`). Per-SDK-2.0 timeout-helper
+Each board builds for both chip families — **i75-rp2040 / i75-rp2350 (75W)** and
+**plasma-rp2040 / plasma-rp2350w** — via separate build trees (RP2350 uses
+`-DPICO_BOARD=pico2`, e.g. `cmake-build-*-rp2350`). Per-SDK-2.0 timeout-helper
 changes live in the USB code — keep them encapsulated.
 
 ## Wire protocol (host → board)
@@ -78,10 +85,10 @@ Do the individual steps by hand only when `flash` can't (e.g. a board with no
 
 ## Roadmap & how we work
 
-`docs/` is the source of truth for planned work. Epics `E1`–`E8` each have a doc
-in `docs/epics/` and a GitHub issue; their user stories are the unit of work and
-each has its own issue. Progress lives on the
-[Multiverse Firmware Roadmap](https://github.com/users/elaurijssens/projects/1)
+`docs/` is the source of truth for planned work. Epics `E1`–`E10` each have a doc
+in `docs/epics/` and a GitHub issue (E3/E4 are **retired** — superseded by E9/E10);
+their user stories are the unit of work and each has its own issue. Progress lives
+on the [pixel-multiverse Roadmap](https://github.com/users/elaurijssens/projects/1)
 GitHub Project board.
 
 - **Acceptance criteria are checkboxes.** When working a story, tick each
@@ -90,9 +97,9 @@ GitHub Project board.
   acceptance-criteria box is checked.**
 - Keep the `docs/` tree in sync with reality — when an approach changes, update
   the epic; don't leave it stale.
-- The roadmap's direction: collapse the per-board duplication into two
-  chip-family images (RP2040 / RP2350) with runtime board configuration. Read
-  `docs/README.md` before proposing structural changes.
+- **Direction (v0.1.0 reshape):** i75 + Plasma only, **compile-time per-board
+  images** (no runtime unification — E3/E4 retired), Unicorns and audio removed.
+  Read `docs/README.md` before proposing structural changes.
 
 ## Conventions
 

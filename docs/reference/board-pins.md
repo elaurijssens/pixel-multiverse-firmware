@@ -1,8 +1,13 @@
 # Board pin maps & wrong-driver safety
 
-GPIO assignments for every supported board, and what happens if the firmware runs
-the **wrong** display driver for the attached hardware. This matters for E3 (runtime
-display selection) and E4 (one image per chip family, several drivers linked).
+> **v0.1.0 reshape:** the supported boards are now **i75 + Plasma only** (Unicorns
+> dropped), and each image links **one** driver at compile time — so the wrong-driver
+> case is largely designed out. The Unicorn tables/rows below are **historical**
+> (kept for reference); the live concern is the small **i75 ↔ Plasma** pin overlap
+> and the switch caveat.
+
+GPIO assignments per board, and what happens if the firmware runs the **wrong**
+display driver for the attached hardware.
 
 Source: the Pimoroni C++ drivers this firmware builds against — `libraries/{galactic,
 cosmic,stellar}_unicorn/*.hpp`, `drivers/hub75/hub75.hpp`, `drivers/plasma/ws2812.hpp`,

@@ -1,5 +1,11 @@
 # E4 — Chip-family build consolidation
 
+> **⚠️ RETIRED / SUPERSEDED (v0.1.0 reshape).** We keep **separate compile-time
+> per-board images** (`i75-rp2040`, `i75-rp2350`, `plasma-rp2040`, `plasma-rp2350w`)
+> rather than two chip-family images, so this consolidation is moot. The
+> CI-builds-all-images survivor (#24) moved to **[E9](E9-descope-identity.md)** (#43).
+> Kept for record — do not implement this epic.
+
 **Phase:** 2 · **Depends on:** E3 · **Unlocks:** simpler releases
 
 ## Goal
