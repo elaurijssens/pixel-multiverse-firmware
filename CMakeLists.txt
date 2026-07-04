@@ -70,14 +70,25 @@ if(PICO_PLATFORM MATCHES "rp2350")
 else()
     set(MULTIVERSE_CHIP "rp2040")
 endif()
+
+# WiFi is a build-time capability: the "W" board variants (PICO_BOARD=pico2_w /
+# pico_w) carry the CYW43. Reflect it in the chip suffix (e.g. rp2350w) and link
+# the CYW43 + lwIP stack in poll mode further down. See docs/epics/E7.
+set(MULTIVERSE_WIFI 0)
+if(PICO_BOARD MATCHES "_w$")
+    set(MULTIVERSE_WIFI 1)
+    set(MULTIVERSE_CHIP "${MULTIVERSE_CHIP}w")
+endif()
+
 set(MULTIVERSE_BOARD_ID "${MULTIVERSE_BOARD}-${MULTIVERSE_CHIP}")
-message("Board id: ${MULTIVERSE_BOARD_ID}")
+message("Board id: ${MULTIVERSE_BOARD_ID} (wifi=${MULTIVERSE_WIFI})")
 
 target_compile_definitions(
     ${NAME} PRIVATE
     MULTIVERSE_BOARD="${MULTIVERSE_BOARD}"
     MULTIVERSE_BOARD_ID="${MULTIVERSE_BOARD_ID}"
     MULTIVERSE_VERSION="${MULTIVERSE_VERSION}"
+    MULTIVERSE_WIFI=${MULTIVERSE_WIFI}
 )
 
 include(${DISPLAY_PATH})
@@ -96,6 +107,13 @@ target_link_libraries(${NAME}
     tinyusb_device
     tinyusb_board
 )
+
+# WiFi (W board variants only): CYW43 + lwIP in poll mode. lwipopts.h lives in
+# src/net and must be on the include path for the lwIP build.
+if(MULTIVERSE_WIFI)
+    target_include_directories(${NAME} PRIVATE ${SRC_DIR}/net)
+    target_link_libraries(${NAME} pico_cyw43_arch_lwip_poll)
+endif()
 
 # create map/bin/hex file etc.
 pico_add_extra_outputs(${NAME})
