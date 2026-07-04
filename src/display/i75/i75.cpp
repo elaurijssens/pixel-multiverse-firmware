@@ -64,6 +64,24 @@ namespace display {
             return ChainOrder::RASTER_TD;
         }
 
+        // Hub75 wire colour order from the k/v `order` key (same key as plasma).
+        // Defaults to RGB (today's hard-coded value); some panels wire channels
+        // differently.
+        Hub75::COLOR_ORDER parse_order() {
+            using CO = Hub75::COLOR_ORDER;
+            size_t vlen = 0;
+            const uint8_t* v = kv::config().get("order", vlen);
+            if (v == nullptr || vlen == 0) return CO::RGB;
+            std::string_view s(reinterpret_cast<const char*>(v), vlen);
+            if (s == "rgb") return CO::RGB;
+            if (s == "rbg") return CO::RBG;
+            if (s == "grb") return CO::GRB;
+            if (s == "gbr") return CO::GBR;
+            if (s == "brg") return CO::BRG;
+            if (s == "bgr") return CO::BGR;
+            return CO::RGB;  // unknown → default
+        }
+
         // Read panel/layout/display config into `geo`. Returns true if the config
         // was present but invalid (caller shows a diagnostic); `geo` is always left
         // at a renderable geometry, falling back to a flat 256×64 panel.
@@ -262,7 +280,7 @@ namespace display {
         front = 0;
         gfx   = pg[1 - front];  // draw target = back
 
-        panel = new Hub75(geo.chain_w, geo.chain_h, nullptr, PANEL_GENERIC, false, Hub75::COLOR_ORDER::RGB);
+        panel = new Hub75(geo.chain_w, geo.chain_h, nullptr, PANEL_GENERIC, false, parse_order());
         panel->start(dma_complete);
 
         if (bad_cfg) {
