@@ -20,16 +20,21 @@ flag), and double buffering (E6) for the load-then-flip pattern.
 
 - **Hardware:** W variants use the CYW43 wireless chip; the SDK ships
   `pico_cyw43_arch` + lwIP (present under the SDK, per CMake config output).
-- **Compile in, toggle via k/v:** per the vision, WiFi support may be compiled
-  into the image and **enabled/disabled via a k/v key** (E2) rather than a
-  separate build. Confirm the RAM/flash cost of always compiling it in.
-- **Build-time capability + runtime refusal:** WiFi hardware presence is a
-  **build/variant fact**, not a `BoardKind` one — i75 vs i75**W** and Plasma vs
-  Plasma-**W** share a `BoardKind` (E3) but differ in whether they carry the CYW43.
-  So WiFi capability is decided when the image is built (with/without `pico_cyw43_arch`);
-  the `wifi` key **enables** it at runtime, and the firmware **refuses to enable and
-  reports a diagnostic** when the running image has no WiFi hardware. (Chip family —
-  RP2040/RP2350 — is likewise a build-time choice, like the board is today.)
+- **Build model — DECIDED: separate W image.** WiFi capability is a build-time
+  fact: build a distinct `…-rp2350w` image (`PICO_BOARD=pico2_w`, linking
+  `pico_cyw43_arch` + lwIP), keeping the non-W `…-rp2350` images WiFi-free. The
+  `wifi` k/v key **enables** it at runtime on a W image; a W image run on hardware
+  without the CYW43 (or `wifi` unset) simply doesn't bring WiFi up. This matches
+  the per-board-chip image model (S9.6) — the W variants are extra CI targets.
+- **CYW43 stability — DECIDED: `poll` mode.** The CYW43/LWIP lockups reported in
+  the ecosystem are largely a `threadsafe_background` failure class: LWIP in
+  `NO_SYS` mode isn't IRQ-reentrant, but background mode services it from an IRQ,
+  so under load an IRQ mid-LWIP corrupts its state → hangs (pico-sdk #1079). We are
+  **single-core with an on-demand main loop**, so we use
+  `pico_cyw43_arch_lwip_poll` and call `cyw43_arch_poll()` from the command loop
+  next to `transport.poll()` — no IRQ servicing, no reentrancy. Init CYW43 early
+  (before the loop); keep pico-sdk + `cyw43_driver` current. Residual risk is
+  empirical → **S7.1 includes a soak test** on the i75w.
 - **Credentials:** SSID/passphrase storage — likely k/v keys (note: 64-byte value
   limit; a passphrase fits, an enterprise cert does not). Security of stored
   creds is an open question.
@@ -41,14 +46,19 @@ flag), and double buffering (E6) for the load-then-flip pattern.
   (multicast frame + multicast flip? timestamped flip?) **remains to be
   determined.**
 
-## User stories (provisional — refine when the epic starts)
+## User stories
 
 ### S7.1 — WiFi bring-up ([#32](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/32))
 *As a board owner, I want a W board to join my network when WiFi is enabled in config.*
 **Acceptance criteria**
-- [ ] Device connects using credentials/flags from the k/v store.
-- [ ] WiFi disabled (or absent config) ⇒ device behaves exactly as a non-WiFi board.
-- [ ] Connection status visible via the diagnostic console (E5).
+- [ ] A separate `…-rp2350w` image (`PICO_BOARD=pico2_w`) links `pico_cyw43_arch` +
+  lwIP in **poll** mode; non-W images are unchanged. Added to the CI matrix.
+- [ ] On a W image with `wifi=1` + `ssid`/`pass` k/v keys, the board connects;
+  `cyw43_arch_poll()` runs from the command loop next to `transport.poll()`.
+- [ ] WiFi unset/disabled (or no CYW43) ⇒ behaves exactly as a non-WiFi board.
+- [ ] Connection status queryable — extend `vers`/`diag` with WiFi state + IP.
+- [ ] **Soak test:** WiFi associated and serviced over an extended run without lockup
+  (the CYW43 stability check).
 
 ### S7.2 — Commands over the network ([#33](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/33))
 *As a host, I want to send the same commands over WiFi as over USB.*
