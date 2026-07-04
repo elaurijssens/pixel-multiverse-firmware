@@ -81,10 +81,13 @@ cy   = py
 
 ### S11.2 — Layout-aware self-tests ([#53](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/53))
 *As a board owner, I want self-tests that render across the physical arrangement so I can verify size and wiring.*
-- [ ] `chain_seq` mapping implemented for the starter `chain` set
-- [ ] Dimensions test (42) renders the **logical-display** border + `display_w×display_h`, mapped across panels
-- [ ] New **layout** test: each panel shows its `(col,row)` + chain `seq` and a per-panel border, so the arrangement and `chain` value can be confirmed by eye
-- [ ] Single-row default verified identical to the current 256×64 output
+- [x] `chain_seq` mapping implemented for the starter `chain` set (verified: live
+  `raster-td` ↔ `raster-bu` switch swaps top/bottom on the 1×2 rig)
+- [x] Dimensions test (42) renders the **logical-display** border + `disp_w×disp_h`, mapped across panels
+- [x] New **layout** test (60): each panel shows its `(col,row)` + chain `seq` and a per-panel border, so the arrangement and `chain` value can be confirmed by eye
+- [x] Single-row default verified identical to the current 256×64 output
+- [x] Geometry (30), corners (31) and grid (50) also render logically for multi-panel;
+  panel-level fills/rows/columns stay per-panel (verified on a 1×2 stack rig)
 
 ### S11.3 — Host tooling + parameter exposure ([#54](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/54))
 *As a host, I want to set the layout from the bench and read the geometry from the board.*
