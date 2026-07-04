@@ -44,13 +44,22 @@ What's left is a cleanup plus a clear per-image identity.
 
 ### S9.5 — Configurable i75 dimensions from k/v ([#21](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/21)) · *was S3.5*
 *As a board owner, I want to set my i75 resolution via the k/v store.*
-- [ ] i75 width/height read from k/v with base-2 range validation (16…256 / 16…128)
+- [ ] i75 width/height read from k/v with range validation (width 16…256, height 16…64 —
+  hub75 scans ≤ 64 rows; stacked panels are folded host-side, not here)
 - [ ] Out-of-range values rejected with a diagnostic + fallback
 
 ### S9.6 — CI builds all per-board images ([#24](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/24)) · *was S4.3*
 *As a maintainer, I want CI to produce every board image.*
-- [ ] CI builds `i75-rp2040`, `i75-rp2350`, `plasma-rp2040`, `plasma-rp2350w`, board-chip/version stamped
-- [ ] Artifacts published per release
+- [ ] CI builds `i75-rp2040` + `i75-rp2350`, board-chip/version stamped (both verified to
+  build cold locally; awaiting the workflow's first green run on GitHub to tick)
+- [ ] `plasma-rp2040` + `plasma-rp2350w` — matrix rows are wired but commented, **gated on
+  E10** (no `src/display/plasma` yet); uncomment when E10 lands its display module
+- [ ] Artifacts published per release (release-attach step added; verify when a release runs)
+
+Implemented in [`.github/workflows/cmake.yml`](../../.github/workflows/cmake.yml): a
+board × chip matrix building each image the way the bench does (`PICO_BOARD` `pico` →
+rp2040, `pico2` → rp2350), stamping `${board}-${chip}-multiverse-${version}.uf2` from
+`git describe`, uploading it as a CI artifact, and attaching it to GitHub releases.
 
 ## Technical notes
 
