@@ -52,6 +52,7 @@ Directions:
 | [E9](epics/E9-descope-identity.md) | i75 + Plasma descope & board identity | 2 | E1, E2 | [#43](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/43) |
 | [E10](epics/E10-plasma-board.md) | Plasma board (WS2812) | 2 → 3 | E9 | [#47](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/47) |
 | [E11](epics/E11-panel-layout.md) | Panel layout & multi-panel geometry (i75) | 2 | E9 | [#51](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/51) |
+| [E12](epics/E12-factory-reset.md) | Factory reset & config recovery | 3 | E2 | [#56](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/56) |
 | [E5](epics/E5-text-console.md) | Diagnostic text console | 3 | E1 | [#5](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/5) |
 | [E6](epics/E6-double-buffering.md) | Double buffering & multi-board sync | 3 | E1 | [#6](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/6) |
 | [E7](epics/E7-wifi-transport.md) | WiFi transport & multicast sync | 4 | E1, E2, E6 | [#7](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/7) |
