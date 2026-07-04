@@ -27,6 +27,7 @@
 
 #include "bsp/board.h"
 #include "tusb.h"
+#include "hardware/watchdog.h"
 
 #include "get_serial.h"
 
@@ -57,6 +58,10 @@ int main(void) {
     net::wifi_init();        // W images only: connect if `wifi` enabled (no-op otherwise)
     net::udp_transport_init(); // bind the UDP command socket (W builds, if wifi up)
     net::multicast_init();     // join the multicast frame group (E7 S7.3)
+
+    // Safety net: reboot if the command loop wedges for >4s (e.g. a CYW43 stall).
+    // Every handler + read completes well inside this; run() pets it each iteration.
+    watchdog_enable(4000, true);
 
     command_core::UsbCdcTransport transport;
     command_core::run(transport, net::udp_transport());  // USB + (on W) UDP

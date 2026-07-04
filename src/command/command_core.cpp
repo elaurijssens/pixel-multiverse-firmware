@@ -243,6 +243,7 @@ void run(Transport& transport, Transport* secondary) {
     const uint32_t primary_to = (secondary != nullptr) ? 5 : 1000;
 
     while (1) {
+        watchdog_update();  // auto-reboot if the loop wedges (e.g. a CYW43 stall)
         transport.poll();
         net::wifi_poll();  // CYW43 poll (poll mode): fills UDP/multicast buffers; no-op on non-W
 
