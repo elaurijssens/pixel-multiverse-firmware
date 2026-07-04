@@ -7,20 +7,25 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <new>
 #include <string_view>
 
 using namespace pimoroni;
 
 namespace display {
-    // Framebuffer sized for the longest supported strip; the graphics + WS2812
-    // driver are constructed in init() for the runtime length from the k/v store.
-    uint8_t buffer[BUFFER_MAX];
-
     namespace {
         constexpr uint LED_PIN = 15;   // PLASMA2350 DATA pin (WS2812)
         int strip_len = 64;            // runtime, set in init()
-        PicoGraphics_PenRGB888* gfx   = nullptr;
-        plasma::WS2812*         strip = nullptr;
+
+        // Two framebuffers (heap, runtime-sized): buf[front] is shown, buf[1-front]
+        // is the write/draw target; `gfx` tracks the back gfx. Single-buffered
+        // fallback if the back allocation fails (see E6).
+        uint8_t*                buf[2] = { nullptr, nullptr };
+        PicoGraphics_PenRGB888* pg[2]  = { nullptr, nullptr };
+        int                     front  = 0;
+        bool                    dbuf   = false;
+        PicoGraphics_PenRGB888* gfx    = nullptr;  // current back (draw target)
+        plasma::WS2812*         strip  = nullptr;
 
         // Read the strip length from the k/v store. Returns true if the stored
         // value was present but invalid (caller shows a diagnostic); `strip_len`
@@ -103,14 +108,29 @@ namespace display {
         }
     }
 
-    int    width()       { return strip_len; }
-    int    height()      { return 1; }
-    size_t buffer_size() { return static_cast<size_t>(strip_len) * 4; }
+    int      width()       { return strip_len; }
+    int      height()      { return 1; }
+    size_t   buffer_size() { return static_cast<size_t>(strip_len) * 4; }
+    uint8_t* back()        { return buf[1 - front]; }
 
     void init() {
         bool bad_cfg = load_length();  // needs config_boot() to have run (see main.cpp)
 
-        gfx   = new PicoGraphics_PenRGB888(strip_len, 1, buffer);
+        // Two framebuffers (E6): front is shown, back is written. The back may fail
+        // to allocate on a very long strip / tight RAM → single-buffered fallback.
+        size_t bytes = buffer_size();
+        buf[0] = new uint8_t[bytes];
+        pg[0]  = new PicoGraphics_PenRGB888(strip_len, 1, buf[0]);
+        buf[1] = new (std::nothrow) uint8_t[bytes];
+        if (buf[1] != nullptr) {
+            pg[1] = new PicoGraphics_PenRGB888(strip_len, 1, buf[1]);
+            dbuf  = true;
+        } else {
+            buf[1] = buf[0]; pg[1] = pg[0]; dbuf = false;
+        }
+        front = 0;
+        gfx   = pg[1 - front];  // draw target = back
+
         strip = new plasma::WS2812(strip_len, pio0, 0, LED_PIN,
                                    plasma::WS2812::DEFAULT_SERIAL_FREQ, false,
                                    parse_order());
@@ -136,15 +156,15 @@ namespace display {
     }
 
     void update() {
-        // Framebuffer is PenRGB888: little-endian B,G,R,0 per pixel. Walk it into
-        // the WS2812 driver and push (blocking, so the transfer completes).
+        if (dbuf) front ^= 1;         // present the freshly-drawn back buffer
+        // Framebuffer is PenRGB888: little-endian B,G,R,0 per pixel. Walk the front
+        // buffer into the WS2812 driver and push (blocking, so it completes).
+        const uint8_t* f = buf[front];
         for (int i = 0; i < strip_len; i++) {
-            uint8_t b = buffer[i * 4 + 0];
-            uint8_t g = buffer[i * 4 + 1];
-            uint8_t r = buffer[i * 4 + 2];
-            strip->set_rgb(i, r, g, b);
+            strip->set_rgb(i, f[i * 4 + 2], f[i * 4 + 1], f[i * 4 + 0]);
         }
         strip->update(true);
+        gfx = pg[1 - front];          // draw target follows to the now-hidden buffer
     }
 
     void selftest(uint8_t test_id) {

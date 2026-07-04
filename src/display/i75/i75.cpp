@@ -5,21 +5,27 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <new>
 #include <string>
 #include <string_view>
 
 using namespace pimoroni;
 
 namespace display {
-    // Framebuffer sized for the largest supported chain; the graphics/panel are
-    // constructed in init() for the runtime geometry read from the k/v store.
-    uint8_t buffer[BUFFER_MAX];
-
     namespace {
         // Safe, always-renderable default: a single flat 256×64 panel.
         Geometry geo = { 256, 64, 1, 1, 256, 64, 256, 64, ChainOrder::RASTER_TD };
-        PicoGraphics_PenRGB888* gfx   = nullptr;
-        Hub75*                  panel = nullptr;
+
+        // Two framebuffers (heap, runtime-sized): pg[front] is shown, pg[1-front]
+        // is the write/draw target. `gfx` always tracks the back gfx so all drawing
+        // code targets the hidden buffer. If the back allocation doesn't fit
+        // (RP2040 near max dims), we fall back to single-buffered (pg[1]=pg[0]).
+        uint8_t*                buf[2] = { nullptr, nullptr };
+        PicoGraphics_PenRGB888* pg[2]  = { nullptr, nullptr };
+        int                     front  = 0;
+        bool                    dbuf   = false;
+        PicoGraphics_PenRGB888* gfx    = nullptr;  // current back (draw target)
+        Hub75*                  panel  = nullptr;
 
         // Parsed value of an ASCII-decimal key: >=0 value, -1 absent, -2 invalid.
         long read_opt(const char* key) {
@@ -226,9 +232,10 @@ namespace display {
         }
     }
 
-    int    width()       { return geo.display_w; }
-    int    height()      { return geo.display_h; }
-    size_t buffer_size() { return static_cast<size_t>(geo.chain_w) * geo.chain_h * 4; }
+    int      width()       { return geo.display_w; }
+    int      height()      { return geo.display_h; }
+    size_t   buffer_size() { return static_cast<size_t>(geo.chain_w) * geo.chain_h * 4; }
+    uint8_t* back()        { return buf[1 - front]; }
     const Geometry& geometry() { return geo; }
 
     void __isr dma_complete() {
@@ -238,10 +245,23 @@ namespace display {
     void init() {
         bool bad_cfg = load_geometry();  // needs config_boot() to have run (see main.cpp)
 
-        // Graphics + panel are built at the flat chain geometry; the logical layout
-        // is applied when rendering self-tests (E11 S11.2) and by the host for
-        // streamed frames.
-        gfx   = new PicoGraphics_PenRGB888(geo.chain_w, geo.chain_h, buffer);
+        // Two framebuffers at the flat chain geometry (E6): front is shown, back is
+        // written. The back allocation may fail on RP2040 near max dims → single-
+        // buffered fallback. The logical layout is applied when rendering self-tests
+        // (E11 S11.2) and by the host for streamed frames.
+        size_t bytes = buffer_size();
+        buf[0] = new uint8_t[bytes];
+        pg[0]  = new PicoGraphics_PenRGB888(geo.chain_w, geo.chain_h, buf[0]);
+        buf[1] = new (std::nothrow) uint8_t[bytes];
+        if (buf[1] != nullptr) {
+            pg[1] = new PicoGraphics_PenRGB888(geo.chain_w, geo.chain_h, buf[1]);
+            dbuf  = true;
+        } else {
+            buf[1] = buf[0]; pg[1] = pg[0]; dbuf = false;  // single-buffered
+        }
+        front = 0;
+        gfx   = pg[1 - front];  // draw target = back
+
         panel = new Hub75(geo.chain_w, geo.chain_h, nullptr, PANEL_GENERIC, false, Hub75::COLOR_ORDER::RGB);
         panel->start(dma_complete);
 
@@ -262,7 +282,9 @@ namespace display {
     }
 
     void update() {
-        panel->update(gfx);
+        if (dbuf) front ^= 1;      // show the freshly-drawn back buffer
+        panel->update(pg[front]);
+        gfx = pg[1 - front];       // draw target follows to the now-hidden buffer
     }
 
     void selftest(uint8_t test_id) {

@@ -14,13 +14,12 @@ namespace display {
     constexpr size_t BUFFER_MAX = static_cast<size_t>(MAX_LEDS) * 4;
 
     void init();
-    void update();
+    void update();         // present the back buffer (swap front↔back, push to strip)
     void info(std::string_view text);
     void selftest(uint8_t test_id);
 
-    int    width();        // configured strip length (from k/v, default 64)
-    int    height();       // always 1 — a linear strip
-    size_t buffer_size();  // width() * 4 — bytes the host streams
-
-    extern uint8_t buffer[BUFFER_MAX];
+    int      width();      // configured strip length (from k/v, default 64)
+    int      height();     // always 1 — a linear strip
+    size_t   buffer_size();// width() * 4 — bytes the host streams
+    uint8_t* back();       // the back (hidden) framebuffer — the write/draw target
 }

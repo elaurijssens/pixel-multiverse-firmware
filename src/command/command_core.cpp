@@ -42,11 +42,17 @@ command_core::Handler lookup(const uint8_t id[COMMAND_LEN]) {
     return nullptr;
 }
 
+// E6 double buffering: `data`/`zdat` always load the back (hidden) buffer. In
+// immediate mode (default, "live") they present it right away; in deferred mode
+// ("hold") they don't — a `flip` command presents it, so many boards can load
+// then flip together (E7).
+bool deferred = false;
+
 // --- Handlers (one per command; each reads its own payload) -----------------
 
 void handle_data(command_core::Transport& transport) {
-    if (transport.read(display::buffer, display::buffer_size()) == display::buffer_size()) {
-        display::update();
+    if (transport.read(display::back(), display::buffer_size()) == display::buffer_size()) {
+        if (!deferred) display::update();
     }
 }
 
@@ -80,9 +86,9 @@ void handle_zdat(command_core::Transport& transport) {
         return;
     }
 
-    // Decompress the data using zlib
+    // Decompress the data using zlib into the back buffer
     uLongf decompressed_size = display::buffer_size();  // Expected size of decompressed data
-    int ret = uncompress(display::buffer, &decompressed_size, compressed_data, compressed_size);
+    int ret = uncompress(display::back(), &decompressed_size, compressed_data, compressed_size);
 
     free(compressed_data);  // Free the compressed data buffer
 
@@ -98,8 +104,8 @@ void handle_zdat(command_core::Transport& transport) {
         return;
     }
 
-    // Update the display with the decompressed data
-    display::update();
+    // Present the decompressed frame (unless holding for a flip)
+    if (!deferred) display::update();
 }
 
 void handle_test(command_core::Transport& transport) {
@@ -139,6 +145,21 @@ void handle_usb(command_core::Transport& transport) {
     reset_usb_boot(0, 0);
 }
 
+// E6: present the loaded back buffer (used with `hold` for load-then-flip sync).
+void handle_flip(command_core::Transport& transport) {
+    display::update();
+}
+
+// E6: enter deferred mode — `data`/`zdat` load without presenting until `flip`.
+void handle_hold(command_core::Transport& transport) {
+    deferred = true;
+}
+
+// E6: return to immediate mode — `data`/`zdat` present each frame (the default).
+void handle_live(command_core::Transport& transport) {
+    deferred = false;
+}
+
 void register_builtins() {
     static bool done = false;
     if (done) return;
@@ -147,6 +168,9 @@ void register_builtins() {
     command_core::register_command("data", handle_data);
     command_core::register_command("zdat", handle_zdat);
     command_core::register_command("test", handle_test);
+    command_core::register_command("flip", handle_flip);
+    command_core::register_command("hold", handle_hold);
+    command_core::register_command("live", handle_live);
     command_core::register_command("_rst", handle_rst);
     command_core::register_command("_usb", handle_usb);
 }

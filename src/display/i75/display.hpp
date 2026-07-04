@@ -30,14 +30,13 @@ namespace display {
     };
 
     void init();
-    void update();
+    void update();         // present the back buffer (swap front↔back, render)
     void info(std::string_view text);
     void selftest(uint8_t test_id);
 
-    int    width();        // logical display width  (== geometry().display_w)
-    int    height();       // logical display height (== geometry().display_h)
-    size_t buffer_size();  // bytes the host streams: chain_w * chain_h * 4
+    int      width();      // logical display width  (== geometry().display_w)
+    int      height();     // logical display height (== geometry().display_h)
+    size_t   buffer_size();// bytes the host streams: chain_w * chain_h * 4
+    uint8_t* back();       // the back (hidden) framebuffer — the write/draw target
     const Geometry& geometry();
-
-    extern uint8_t buffer[BUFFER_MAX];
 }

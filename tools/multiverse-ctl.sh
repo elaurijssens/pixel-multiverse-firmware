@@ -8,6 +8,8 @@
 #   multiverse-ctl.sh test NN [device]     Show self-test pattern NN    (multiverse:testNN)
 #   multiverse-ctl.sh data IMG [device]    Send image uncompressed      (multiverse:data)
 #   multiverse-ctl.sh zdat IMG [device]    Send image zlib-compressed   (multiverse:zdat)
+#   multiverse-ctl.sh hold|live [device]   Deferred / immediate present (multiverse:hold/live)
+#   multiverse-ctl.sh flip [device]        Present the loaded back buffer (multiverse:flip)
 #   multiverse-ctl.sh set KEY VAL [device] Set a config key             (multiverse:put )
 #   multiverse-ctl.sh get KEY [device]     Read a config key            (multiverse:get )
 #   multiverse-ctl.sh del KEY [device]     Delete a config key          (multiverse:del )
@@ -60,7 +62,7 @@ if [ -z "${MV_PYTHON:-}" ] && [ -x "$REPO_ROOT/.venv/bin/python" ]; then
 fi
 
 usage() {
-  sed -n '3,47p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,49p' "$0" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -364,6 +366,9 @@ case "${1:-}" in
     send "test${2}" "${3:-$(first_port)}"
     ;;
   data|zdat) send_image "$1" "${2:-}" "${3:-$(first_port)}" ;;
+  flip) send "flip" "${2:-$(first_port)}" ;;
+  hold) send "hold" "${2:-$(first_port)}" ;;
+  live) send "live" "${2:-$(first_port)}" ;;
   set) config_cmd set "${4:-$(first_port)}" "${2:-}" "${3-}" ;;
   get) config_cmd get "${3:-$(first_port)}" "${2:-}" ;;
   del) config_cmd del "${3:-$(first_port)}" "${2:-}" ;;
