@@ -45,7 +45,7 @@ changes live in the USB code — keep them encapsulated.
 ## Wire protocol (host → board)
 
 The firmware waits for the literal prefix `multiverse:` then reads a **4-byte**
-command (`src/main.cpp`). Current commands: `data`, `zdat` (zlib), `note`,
+command (`src/main.cpp`). Current commands: `data`, `zdat` (zlib),
 `test` (two ASCII digits `00`–`99` select a self-test pattern — see
 `src/display/selftest.hpp`), `put `/`get `/`del ` (E2 config store, length-prefixed
 — see `src/config/kv_commands.cpp`), `_rst` (watchdog reboot), `_usb`

@@ -53,7 +53,6 @@ add_executable(${NAME}
     ${SRC_DIR}/config/kv_log.cpp
     ${SRC_DIR}/config/kv_flash.cpp
     ${SRC_DIR}/config/kv_commands.cpp
-    ${SRC_DIR}/display/board_config.cpp
     ${SRC_DIR}/cdc_uart.cpp
     ${SRC_DIR}/get_serial.cpp
     ${SRC_DIR}/usb_descriptors.cpp

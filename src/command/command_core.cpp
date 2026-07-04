@@ -22,20 +22,6 @@ namespace {
 const size_t COMMAND_LEN = 4;
 uint8_t command_buffer[COMMAND_LEN];
 
-uint16_t get_data_uint16(command_core::Transport& transport) {
-    uint16_t len;
-    transport.poll();
-    transport.read((uint8_t *)&len, 2);
-    return len;
-}
-
-uint8_t get_data_uint8(command_core::Transport& transport) {
-    uint8_t len;
-    transport.poll();
-    transport.read((uint8_t *)&len, 1);
-    return len;
-}
-
 // --- Command registry: 4-byte id -> handler ---------------------------------
 
 struct Entry {
@@ -134,26 +120,8 @@ void handle_test(command_core::Transport& transport) {
     display::selftest(test_id);
 }
 
-// The `wave` command (raw PCM streaming via display::play_audio) was dropped in
-// S1.4: no host tooling ever sent it, and `note` covers synth audio. play_audio()
-// remains in the display API if raw streaming is wanted again later.
-
-void handle_note(command_core::Transport& transport) {
-    uint8_t channel = get_data_uint8(transport);
-    uint16_t freq = get_data_uint16(transport);
-
-    uint8_t waveform = get_data_uint8(transport);
-
-    uint16_t a = get_data_uint16(transport);
-    uint16_t d = get_data_uint16(transport);
-    uint16_t s = get_data_uint16(transport);
-    uint16_t r = get_data_uint16(transport);
-
-    uint8_t phase = get_data_uint8(transport);
-
-    display::play_note(channel, freq, waveform, a, d, s, r, phase);
-    //display::info("note");
-}
+// Audio (the `note`/`wave` commands + display::play_note/play_audio) was removed in
+// S9.2: only the Unicorn boards had synth/sample support, and they were dropped.
 
 void handle_rst(command_core::Transport& transport) {
     display::info("RST");
@@ -179,7 +147,6 @@ void register_builtins() {
     command_core::register_command("data", handle_data);
     command_core::register_command("zdat", handle_zdat);
     command_core::register_command("test", handle_test);
-    command_core::register_command("note", handle_note);
     command_core::register_command("_rst", handle_rst);
     command_core::register_command("_usb", handle_usb);
 }
