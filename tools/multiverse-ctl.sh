@@ -283,7 +283,21 @@ case "${1:-}" in
   flash) flash "${2:-20}" "${3:-}" ;;
   list|ls)
     ports="$(detect_ports)"
-    if [ -z "$ports" ]; then echo "no Multiverse ports detected"; else echo "$ports"; fi
+    if [ -z "$ports" ]; then echo "no Multiverse ports detected"; exit 0; fi
+    if [ "$(uname -s)" = "Darwin" ]; then
+      # Map each call-out device to its USB Product Name (e.g. "Multiverse i75-rp2350"),
+      # so we can label the port with the board id the firmware now advertises (S9.3).
+      map="$(ioreg -rl -c IOUSBHostDevice 2>/dev/null | awk '
+        /USB Product Name/ { i=index($0,"= \""); p=substr($0,i+3); sub(/".*/,"",p); prod=p }
+        /IOCalloutDevice/  { i=index($0,"= \""); d=substr($0,i+3); sub(/".*/,"",d); print d"\t"prod }')"
+      printf '%s\n' "$ports" | while IFS= read -r p; do
+        board="$(printf '%s\n' "$map" | awk -F'\t' -v d="$p" '$1==d{print $2; exit}')"
+        board="${board#Multiverse }"; board="${board#Multiverse}"
+        printf '  %s  %s\n' "$p" "${board:-?}"
+      done
+    else
+      printf '%s\n' "$ports"
+    fi
     ;;
   -h|--help|help|"") usage 0 ;;
   *) echo "error: unknown command '$1'" >&2; usage 1 ;;

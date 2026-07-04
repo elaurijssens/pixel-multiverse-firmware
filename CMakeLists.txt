@@ -63,9 +63,20 @@ target_include_directories(
     ${SRC_DIR}
 )
 
+# Board identity: board-chip (e.g. i75-rp2350). Chip family from the SDK platform,
+# which is known now (after pico_sdk_init).
+if(PICO_PLATFORM MATCHES "rp2350")
+    set(MULTIVERSE_CHIP "rp2350")
+else()
+    set(MULTIVERSE_CHIP "rp2040")
+endif()
+set(MULTIVERSE_BOARD_ID "${MULTIVERSE_BOARD}-${MULTIVERSE_CHIP}")
+message("Board id: ${MULTIVERSE_BOARD_ID}")
+
 target_compile_definitions(
     ${NAME} PRIVATE
     MULTIVERSE_BOARD="${MULTIVERSE_BOARD}"
+    MULTIVERSE_BOARD_ID="${MULTIVERSE_BOARD_ID}"
     MULTIVERSE_VERSION="${MULTIVERSE_VERSION}"
 )
 

@@ -25,6 +25,7 @@
 
 #include "tusb.h"
 #include "get_serial.h"
+#include "version.hpp"
 
 
 //--------------------------------------------------------------------+
@@ -106,7 +107,7 @@ char const* string_desc_arr [] =
 {
   (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
   "Pimoroni",
-  "Multiverse",
+  MULTIVERSE_USB_PRODUCT,  // e.g. "Multiverse i75-rp2350" — host reads the board id
   usb_serial,
 };
 
