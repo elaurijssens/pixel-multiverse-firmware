@@ -40,6 +40,7 @@ import subprocess
 import sys
 import time
 import zlib
+from concurrent.futures import ThreadPoolExecutor
 
 try:
     from PIL import Image, ImageSequence
@@ -373,6 +374,20 @@ def main():
     for sink, box in boards:
         print(f"  {sink}  region {box}")
 
+    # Compress each board's slice in parallel (zlib releases the GIL) so encode wall-time is
+    # ~one slice regardless of board count — keeps the host off the critical path as the wall
+    # grows. crop+pack is cheap and runs in the same worker.
+    pool = ThreadPoolExecutor(max_workers=len(boards)) if len(boards) > 1 else None
+
+    def encode_slice(sink, box, comp):
+        return (sink, sink.encode(pack_penrgb888(comp.crop(box))))
+
+    def encode_all(comp):
+        if pool is None:
+            return [encode_slice(sink, box, comp) for sink, box in boards]
+        futs = [pool.submit(encode_slice, sink, box, comp) for sink, box in boards]
+        return [f.result() for f in futs]
+
     def sleep_until(deadline):
         dt = deadline - time.perf_counter()
         if dt > 0:
@@ -384,9 +399,9 @@ def main():
     # sync mode the flip fires `guard` into the period so the unicast slices land first.
     def play_once(t):
         for comp, period in make_frames():
-            # Crop + compress every board's slice up front, BEFORE the flip clock starts, so
-            # the timed window is pure transmission — the flip can't race an un-encoded slice.
-            encoded = [(sink, sink.encode(pack_penrgb888(comp.crop(box)))) for sink, box in boards]
+            # Crop + compress every board's slice up front (in parallel), BEFORE the flip
+            # clock starts, so the timed window is pure transmission.
+            encoded = encode_all(comp)
 
             def send_and_flip():
                 s0 = time.perf_counter()
