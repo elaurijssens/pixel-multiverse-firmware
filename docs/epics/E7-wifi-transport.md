@@ -76,8 +76,15 @@ flag), and double buffering (E6) for the load-then-flip pattern.
 ### S7.2 — Commands over the network ([#33](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/33))
 *As a host, I want to send the same commands over WiFi as over USB.*
 **Acceptance criteria**
-- [ ] A network transport implements the E1 interface; existing handlers work unchanged.
-- [ ] At least the image and sync commands work over the network.
+- [x] `net/udp_transport` implements the E1 `Transport` interface (byte-stream reassembled
+  from datagrams, poll mode); `command_core::run()` services USB + UDP together, dispatching
+  to the same handlers unchanged.
+- [x] Verified on the i75w over UDP: `test` (control), `vers` (query round-trip) and a full
+  256×64 `data` frame (image, `last_rx=65536`) — concurrent with USB. `flip`/`hold`/`live`
+  (sync) use the same path.
+
+> Note: raw UDP is lossy — a full frame needs the 72 KB reassembly ring and, ultimately, a
+> chunk/sequence scheme for reliability + speed. That reliability layer is **S7.3**.
 
 ### S7.3 — Multicast frame distribution ([#34](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/34))
 *As an operator, I want to send one frame to many boards at once.*
