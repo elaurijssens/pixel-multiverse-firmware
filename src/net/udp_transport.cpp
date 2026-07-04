@@ -71,7 +71,10 @@ public:
     }
 
 private:
-    static constexpr size_t RB = 8192;   // reassembly ring (drains as read() consumes)
+    // Reassembly ring. The CYW43/AP deliver packets in aggregated bursts, so a
+    // small ring drops bytes when a burst outpaces read()'s drain. Size it to hold
+    // a full max-size frame (256×64×4 = 64 KB) plus margin so a whole frame buffers.
+    static constexpr size_t RB = 72 * 1024;
     uint8_t  buf_[RB];
     size_t   head_  = 0;
     size_t   count_ = 0;
