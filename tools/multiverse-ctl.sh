@@ -202,23 +202,28 @@ flash() {
     exit 1
   fi
 
-  local board version uf2 stamped
+  local board chip version uf2 stamped
   board="$(sed -n 's/^MULTIVERSE_BOARD[^=]*=//p' "$MV_BUILD_DIR/CMakeCache.txt" | head -n1)"
   [ -n "$board" ] || { echo "error: could not read MULTIVERSE_BOARD from cache." >&2; exit 1; }
+  # Chip family, so RP2040 and RP2350 images (e.g. i75 vs i75w) don't collide in
+  # dist/. PICO_PLATFORM is rp2040 or rp2350-arm-s; keep just rp2040 / rp2350.
+  chip="$(sed -n 's/^PICO_PLATFORM[^=]*=//p' "$MV_BUILD_DIR/CMakeCache.txt" | head -n1)"
+  case "$chip" in rp2350*) chip=rp2350 ;; rp2040*) chip=rp2040 ;; *) chip="${chip:-unknown}" ;; esac
 
   # 1. Reconfigure + build so the embedded MULTIVERSE_VERSION is captured NOW
   #    (CMake derives it from git describe at configure time, not every build).
-  echo "==> building '$board' in $MV_BUILD_DIR"
+  echo "==> building '$board' ($chip) in $MV_BUILD_DIR"
   cmake -S "$REPO_ROOT" -B "$MV_BUILD_DIR" -DPICO_SDK_PATH="$PICO_SDK_PATH" >/dev/null
   cmake --build "$MV_BUILD_DIR"
 
   # 2. Version-stamp: same source of truth CMake uses, so the filename matches
-  #    the string the board reports on its boot screen.
+  #    the string the board reports on its boot screen. Include the chip family
+  #    so 2040/2350 images stay distinct in dist/.
   version="$(git -C "$REPO_ROOT" describe --tags --always --dirty 2>/dev/null || echo unknown)"
   uf2="$MV_BUILD_DIR/${board}-multiverse.uf2"
   [ -f "$uf2" ] || { echo "error: built image '$uf2' not found." >&2; exit 1; }
   mkdir -p "$REPO_ROOT/dist"
-  stamped="$REPO_ROOT/dist/${board}-multiverse-${version}.uf2"
+  stamped="$REPO_ROOT/dist/${board}-${chip}-multiverse-${version}.uf2"
   cp "$uf2" "$stamped"
   echo "==> archived $stamped"
 
