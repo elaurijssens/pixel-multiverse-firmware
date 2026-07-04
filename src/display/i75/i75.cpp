@@ -267,6 +267,10 @@ namespace display {
 
         if (bad_cfg) {
             info("cfg: bad geometry");  // diagnostic, then usable at the fallback size
+        } else if (!dbuf) {
+            // Back buffer didn't fit (RP2040 near max dims): running single-buffered,
+            // so `hold`/`flip` can't truly defer. Flag it on the boot screen.
+            info(std::string("1buf ") + MULTIVERSE_VERSION);
         } else {
             selftest(display_selftest::INFO_SCREEN);  // boot screen = firmware version
         }

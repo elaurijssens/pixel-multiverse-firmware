@@ -39,32 +39,38 @@ prerequisite; multicast distribution of the flip is E7.
 ### S6.1 — Back buffer + flip ([#29](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/29))
 *As the firmware, I want to write to a hidden buffer and flip it on command.*
 **Acceptance criteria**
-- [ ] `data`/`zdat` read into the back buffer (`display::back()`), not the visible one.
-- [ ] A `flip` command swaps front↔back and renders the new front atomically (no tearing).
-- [ ] Works on both drivers: i75 (hub75 `panel->update(front)`) and plasma (walk front → WS2812).
+- [x] `data`/`zdat` read into the back buffer (`display::back()`), not the visible one.
+- [x] A `flip` command swaps front↔back and renders the new front atomically (verified: held
+  frame stays hidden, flip snaps to it).
+- [x] Works on both drivers: i75 (hub75 `panel->update(front)`) and plasma (walk front → WS2812).
 
 ### S6.2 — Backwards-compatible immediate mode ([#30](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/30))
 *As an existing host, I want current behaviour to keep working without sending a flip.*
 **Acceptance criteria**
-- [ ] A mode (default or explicit) preserves load-then-show-immediately.
-- [ ] Existing examples work unchanged, or with a documented one-line change.
+- [x] Default **immediate** ("live") mode preserves load-then-show; `hold`/`live` toggle it.
+- [x] Existing hosts unchanged — `data`/`zdat` behave exactly as before unless `hold` is sent.
 
 ### S6.3 — Memory budget per family ([#31](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/31))
 *As a developer, I want double buffering to fit within each chip's RAM.*
 **Acceptance criteria**
-- [ ] Allocation strategy decided + recorded: **heap, runtime-sized** (Option A).
-- [ ] Back-buffer allocation failure falls back to single-buffered + a diagnostic (no crash).
-- [ ] Per-family behaviour documented: RP2350 full 256×64; RP2040 up to ~128×64.
+- [x] Allocation strategy decided + recorded: **heap, runtime-sized** (Option A).
+- [x] Back-buffer allocation failure falls back to single-buffered + a boot diagnostic
+  (`1buf …`, i75) — defensive; both buffers actually fit at init for all supported dims.
+- [x] Per-family behaviour documented (below).
 
 ## Technical notes
 
 - The flip is a cheap pointer swap plus one driver push of the new front.
-- **Measured RP2040 headroom (256×64):** static bss ≈ 89 KB (incl. the 64 KB
-  framebuffer), the hub75 driver `new`s its own 64 KB back_buffer, and a `zdat`
-  decompress transiently mallocs the compressed blob (≤64 KB) + zlib's ~44 KB
-  window — so 256×64 is already near RP2040's 264 KB during `zdat`. A second
-  framebuffer (+64 KB) only fits at reduced dimensions there; RP2350 (520 KB) is
-  fine. Hence the runtime-sized heap buffers + fallback.
+- **Measured (i75).** Moving both framebuffers to the heap dropped static bss from
+  ~89 KB to **~25 KB**. At init even a 256×64 board fits on RP2040 (264 KB):
+  25 (bss) + 64 + 64 (two buffers) + 64 (hub75's own back_buffer) ≈ **217 KB** — so
+  the single-buffer fallback is defensive, not normally taken.
+- **Per-family limits.** RP2350 (520 KB): full 256×64 double-buffered, `data` and
+  `zdat`, ample headroom. RP2040 (264 KB): double-buffered at all sizes, `data`
+  always fine; **`zdat` at 256×64 is marginal** — decode adds zlib's ~44 KB (+ the
+  compressed blob) on top of ~217 KB, right at the edge. If it can't allocate, the
+  frame is **dropped gracefully** (the `zdat` handler already null-checks). Use
+  **≤128×64** (comfortable) or uncompressed **`data`** for reliable RP2040 use.
 - Mode state (immediate vs deferred) lives in `command_core`; the display layer
   just exposes `back()` and `flip()`. Diagnostics present immediately regardless.
 - This sets up the contract E7 relies on: "load now, flip on shared signal."
