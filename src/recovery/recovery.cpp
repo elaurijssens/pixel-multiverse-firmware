@@ -8,7 +8,7 @@
 
 namespace recovery {
 
-void check_factory_reset() {
+bool check_factory_reset() {
     const uint pin = MULTIVERSE_RESET_BTN;
     gpio_init(pin);
     gpio_set_dir(pin, GPIO_IN);
@@ -17,16 +17,17 @@ void check_factory_reset() {
 
     // Require the button held ~300 ms so a brief touch / noise doesn't wipe config.
     for (int i = 0; i < 30; i++) {
-        if (gpio_get(pin)) return;   // released (high) → not a reset request
+        if (gpio_get(pin)) return false;   // released (high) → not a reset request
         sleep_ms(10);
     }
     kv::config_factory_reset();      // held → erase config; config_boot() reformats empty
+    return true;
 }
 
 }  // namespace recovery
 
 #else  // no reset button configured for this board → no-op
 
-namespace recovery { void check_factory_reset() {} }
+namespace recovery { bool check_factory_reset() { return false; } }
 
 #endif

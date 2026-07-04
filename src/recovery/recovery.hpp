@@ -7,5 +7,7 @@
 // called before kv::config_boot().
 
 namespace recovery {
-    void check_factory_reset();
+    // Returns true if the button was held and the config was erased (so the caller can
+    // show a "config reset" indication once the display is up). False otherwise / no button.
+    bool check_factory_reset();
 }

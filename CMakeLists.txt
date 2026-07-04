@@ -91,6 +91,8 @@ message("Board id: ${MULTIVERSE_BOARD_ID} (wifi=${MULTIVERSE_WIFI})")
 # Board-specific pin; undefined boards get a no-op recovery check.
 if(MULTIVERSE_BOARD STREQUAL "plasma")
     set(MULTIVERSE_RESET_BTN 12)   # PLASMA2350_SW_A_PIN (active-low)
+elseif(MULTIVERSE_BOARD STREQUAL "i75")
+    set(MULTIVERSE_RESET_BTN 14)   # Interstate 75 SW_A button (active-low) — see docs/reference/board-pins.md
 endif()
 
 target_compile_definitions(

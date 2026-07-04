@@ -51,9 +51,10 @@ int main(void) {
     //cdc_uart_init(); // From cdc_uart.c
     tusb_init(); // Tiny USB?
 
-    recovery::check_factory_reset();  // hold the reset button at boot → wipe config first
+    bool was_reset = recovery::check_factory_reset();  // hold reset button at boot → wipe config
     kv::config_boot();       // load persisted config from flash first (formats on first use)
     display::init();         // reads panel dimensions from the config store
+    if (was_reset) display::info("config reset");  // S12.2: visible confirmation of the wipe
     kv::register_commands(); // put/get/del, before run() registers the built-ins
     net::wifi_init();        // W images only: connect if `wifi` enabled (no-op otherwise)
     net::udp_transport_init(); // bind the UDP command socket (W builds, if wifi up)
