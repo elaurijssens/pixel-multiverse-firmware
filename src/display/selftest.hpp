@@ -17,6 +17,7 @@
 //   3x  geometry         — orientation, mirroring, edges
 //   4x  text / colour    — colour rendering + font legibility
 //   5x  grid / addressing — per-tile numbering to map panel wiring
+//   6x  panel layout      — multi-panel geometry (board-rendered, see below)
 //
 // Every pattern is drawn through set_pen(r, g, b) rather than by packing bytes
 // into the framebuffer, so the test exercises the *panel wiring*, not our pixel
@@ -28,6 +29,19 @@ namespace display_selftest {
 // so it is handled by the per-board selftest() wrapper (info() is board-specific
 // — font and layout differ per board) instead of by render() below.
 inline constexpr uint8_t INFO_SCREEN = 41;
+
+// Test 60 renders the panel-layout map (each panel shaded + bordered + labelled
+// with its col,row and chain sequence). Like INFO_SCREEN it needs the board's
+// runtime geometry, so it is handled by the per-board selftest() wrapper, not
+// render() below.
+//
+// On a multi-panel i75 the wrapper also renders the *display-level* patterns in
+// logical space — dimensions (42), geometry (30), corners (31) and grid (50) —
+// so they describe the assembled display, not the flat chain. The *panel-level*
+// patterns (fills 0x, rows 1x, columns 2x) stay on the flat chain so each
+// physical panel's own wiring is still exercised. For a 1×1 panel the logical
+// mapping is identity, so every pattern here renders exactly as drawn.
+inline constexpr uint8_t LAYOUT_SCREEN = 60;
 
 // Fill an inclusive column span of the whole height with the current pen.
 inline void fill_column(pimoroni::PicoGraphics& g, int x, int height) {

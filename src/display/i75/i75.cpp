@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 using namespace pimoroni;
@@ -90,6 +91,139 @@ namespace display {
             geo.chain = order;
             return bad;
         }
+
+        // --- Layout-aware rendering (E11 S11.2) ------------------------------
+        // Grid position (pcol,prow) → the panel's index in the electrical chain.
+        // A single row keeps seq = pcol, so a 1×N horizontal layout is identity
+        // and the flat-chain patterns are unchanged.
+        int chain_seq(int pcol, int prow, int cols, int rows, ChainOrder order) {
+            bool bottom_up = (order == ChainOrder::RASTER_BU || order == ChainOrder::SERPENTINE_BU);
+            bool serp      = (order == ChainOrder::SERPENTINE_TD || order == ChainOrder::SERPENTINE_BU);
+            int chainrow   = bottom_up ? (rows - 1 - prow) : prow;
+            int col_in_row = (serp && (chainrow & 1)) ? (cols - 1 - pcol) : pcol;
+            return chainrow * cols + col_in_row;
+        }
+
+        // Logical display (lx,ly) → flat chain framebuffer (cx,cy).
+        void map_to_chain(int lx, int ly, int& cx, int& cy) {
+            int pcol = lx / geo.panel_w, px = lx % geo.panel_w;
+            int prow = ly / geo.panel_h, py = ly % geo.panel_h;
+            int seq = chain_seq(pcol, prow, geo.panels_x, geo.panels_y, geo.chain);
+            cx = seq * geo.panel_w + px;
+            cy = py;
+        }
+
+        void plot_logical(int lx, int ly) {
+            int cx, cy;
+            map_to_chain(lx, ly, cx, cy);
+            gfx->pixel(Point(cx, cy));
+        }
+
+        // Layout self-test: each panel filled a distinct shade + white border,
+        // labelled with its (col,row) and chain seq — so the physical arrangement
+        // and the `chain` order can be confirmed and calibrated by eye.
+        void render_layout() {
+            static const uint8_t pal[8][3] = {
+                {40,40,40},{0,55,75},{70,45,0},{45,0,70},
+                {0,60,0},{70,0,45},{0,45,70},{65,65,0}
+            };
+            const int pw = geo.panel_w, ph = geo.panel_h;
+            gfx->set_pen(0, 0, 0);
+            gfx->clear();
+            gfx->set_font("bitmap8");
+            for (int prow = 0; prow < geo.panels_y; prow++) {
+                for (int pcol = 0; pcol < geo.panels_x; pcol++) {
+                    int seq = chain_seq(pcol, prow, geo.panels_x, geo.panels_y, geo.chain);
+                    int x0 = seq * pw;
+                    const uint8_t* c = pal[seq % 8];
+                    gfx->set_pen(c[0], c[1], c[2]);
+                    gfx->rectangle(Rect(x0, 0, pw, ph));
+                    gfx->set_pen(255, 255, 255);
+                    gfx->rectangle(Rect(x0,        0,      pw, 1));
+                    gfx->rectangle(Rect(x0,        ph - 1, pw, 1));
+                    gfx->rectangle(Rect(x0,        0,      1,  ph));
+                    gfx->rectangle(Rect(x0 + pw-1, 0,      1,  ph));
+                    gfx->text(std::to_string(pcol) + "," + std::to_string(prow),
+                              Point(x0 + 2, 2), pw, 1.0f);
+                    if (ph >= 18) {  // room for a second line
+                        gfx->text("s" + std::to_string(seq), Point(x0 + 2, 11), pw, 1.0f);
+                    }
+                }
+            }
+        }
+
+        // Dimensions self-test, layout-aware: a border around the *logical* display
+        // (mapped across panels) + the display size, anchored inside panel (0,0).
+        void render_dims_logical() {
+            const int dw = geo.display_w, dh = geo.display_h;
+            gfx->set_pen(0, 0, 0);
+            gfx->clear();
+            gfx->set_pen(255, 255, 255);
+            for (int lx = 0; lx < dw; lx++) { plot_logical(lx, 0); plot_logical(lx, dh - 1); }
+            for (int ly = 0; ly < dh; ly++) { plot_logical(0, ly); plot_logical(dw - 1, ly); }
+            gfx->set_font("bitmap8");
+            int ty = geo.panel_h / 2 - 4; if (ty < 2) ty = 2;
+            int cx, cy;
+            map_to_chain(3, ty, cx, cy);  // top-left of panel (0,0); stays within it
+            gfx->text(std::to_string(dw) + "x" + std::to_string(dh), Point(cx, cy), geo.panel_w, 1.0f);
+        }
+
+        void fill_logical_rect(int lx, int ly, int w, int h, uint8_t r, uint8_t g, uint8_t b) {
+            gfx->set_pen(r, g, b);
+            for (int yy = 0; yy < h; yy++)
+                for (int xx = 0; xx < w; xx++) plot_logical(lx + xx, ly + yy);
+        }
+
+        // Test 30 (border + diagonal) across the logical display.
+        void render_geometry_logical() {
+            const int dw = geo.display_w, dh = geo.display_h;
+            gfx->set_pen(0, 0, 0);
+            gfx->clear();
+            gfx->set_pen(255, 255, 255);
+            for (int lx = 0; lx < dw; lx++) { plot_logical(lx, 0); plot_logical(lx, dh - 1); }
+            for (int ly = 0; ly < dh; ly++) { plot_logical(0, ly); plot_logical(dw - 1, ly); }
+            int n = dw < dh ? dw : dh;
+            for (int i = 0; i < n; i++) plot_logical(i, i);
+        }
+
+        // Test 31 (corner markers) at the logical display's corners.
+        void render_corners_logical() {
+            const int dw = geo.display_w, dh = geo.display_h;
+            int s = (dw < dh ? dw : dh) / 8; if (s < 1) s = 1;
+            gfx->set_pen(0, 0, 0);
+            gfx->clear();
+            fill_logical_rect(0,      0,      s, s, 255,   0,   0);  // TL red
+            fill_logical_rect(dw - s, 0,      s, s,   0, 255,   0);  // TR green
+            fill_logical_rect(0,      dh - s, s, s,   0,   0, 255);  // BL blue
+            fill_logical_rect(dw - s, dh - s, s, s, 255, 255, 255);  // BR white
+        }
+
+        // Test 50 (numbered 16×16 tiles) in logical reading order across the
+        // display; each tile aligns to a panel, so it maps to a contiguous
+        // chain rectangle.
+        void render_grid_logical() {
+            const int cell = 16;
+            int cols = geo.display_w / cell;
+            int rows = geo.display_h / cell;
+            int total = cols * rows; if (total < 1) total = 1;
+            gfx->set_pen(0, 0, 0);
+            gfx->clear();
+            gfx->set_font("bitmap8");
+            int idx = 0;
+            for (int ry = 0; ry < rows; ry++) {
+                for (int cxk = 0; cxk < cols; cxk++) {
+                    RGB bg = RGB::from_hsv((float)idx / (float)total, 1.0f, 1.0f);
+                    int cx, cy;
+                    map_to_chain(cxk * cell, ry * cell, cx, cy);  // tile origin
+                    gfx->set_pen(bg.r, bg.g, bg.b);
+                    gfx->rectangle(Rect(cx, cy, cell, cell));
+                    if (bg.luminance() > 12750) gfx->set_pen(0, 0, 0);
+                    else gfx->set_pen(255, 255, 255);
+                    gfx->text(std::to_string(idx), Point(cx + 2, cy + 4), cell, 1.0f);
+                    idx++;
+                }
+            }
+        }
     }
 
     int    width()       { return geo.display_w; }
@@ -132,13 +266,32 @@ namespace display {
     }
 
     void selftest(uint8_t test_id) {
-        // Test 41 shows the real info() screen; everything else is a pattern drawn
-        // into the flat chain framebuffer. (Layout-aware mapping arrives in S11.2.)
+        // 41 = the real info() screen. 60 = the layout test (always board-rendered).
+        // 42 = dimensions: layout-aware when there's more than one panel, else the
+        // generic flat pattern. Everything else is a flat-chain pattern (for a 1×1
+        // panel that's identical to the logical render).
         if (test_id == display_selftest::INFO_SCREEN) {
             info(MULTIVERSE_VERSION);
             return;
         }
-        display_selftest::render(*gfx, geo.chain_w, geo.chain_h, test_id);
+        // Display-level tests (dimensions, geometry, corners, grid) render in
+        // logical space when there's more than one panel; panel-level tests
+        // (fills, rows, columns) stay on the flat chain to expose each panel's
+        // own wiring. For a 1×1 panel the mapping is identity, so both paths match.
+        bool multi = geo.panels_x * geo.panels_y > 1;
+        if (test_id == display_selftest::LAYOUT_SCREEN) {
+            render_layout();
+        } else if (multi && test_id == 42) {
+            render_dims_logical();
+        } else if (multi && test_id == 30) {
+            render_geometry_logical();
+        } else if (multi && test_id == 31) {
+            render_corners_logical();
+        } else if (multi && test_id == 50) {
+            render_grid_logical();
+        } else {
+            display_selftest::render(*gfx, geo.chain_w, geo.chain_h, test_id);
+        }
         update();
     }
 }
