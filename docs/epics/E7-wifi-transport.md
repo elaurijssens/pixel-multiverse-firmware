@@ -21,20 +21,30 @@ flag), and double buffering (E6) for the load-then-flip pattern.
 - **Hardware:** W variants use the CYW43 wireless chip; the SDK ships
   `pico_cyw43_arch` + lwIP (present under the SDK, per CMake config output).
 - **Build model — DECIDED: separate W image.** WiFi capability is a build-time
-  fact: build a distinct `…-rp2350w` image (`PICO_BOARD=pico2_w`, linking
-  `pico_cyw43_arch` + lwIP), keeping the non-W `…-rp2350` images WiFi-free. The
-  `wifi` k/v key **enables** it at runtime on a W image; a W image run on hardware
-  without the CYW43 (or `wifi` unset) simply doesn't bring WiFi up. This matches
-  the per-board-chip image model (S9.6) — the W variants are extra CI targets.
-- **CYW43 stability — DECIDED: `poll` mode.** The CYW43/LWIP lockups reported in
-  the ecosystem are largely a `threadsafe_background` failure class: LWIP in
-  `NO_SYS` mode isn't IRQ-reentrant, but background mode services it from an IRQ,
-  so under load an IRQ mid-LWIP corrupts its state → hangs (pico-sdk #1079). We are
-  **single-core with an on-demand main loop**, so we use
-  `pico_cyw43_arch_lwip_poll` and call `cyw43_arch_poll()` from the command loop
-  next to `transport.poll()` — no IRQ servicing, no reentrancy. Init CYW43 early
-  (before the loop); keep pico-sdk + `cyw43_driver` current. Residual risk is
-  empirical → **S7.1 includes a soak test** on the i75w.
+  fact: a `…-rp2350w` image (`PICO_BOARD=pico2_w`) links `pico_cyw43_arch` + lwIP;
+  the `wifi` k/v key enables it at runtime, and a W image with `wifi` unset (or no
+  CYW43) just doesn't bring WiFi up. **Board reality:** the **RP2350 i75 is always
+  the i75W** — there is no non-wifi RP2350 i75 — so its RP2350 target becomes
+  **`i75-rp2350w` (pico2_w)**, replacing the plain `i75-rp2350`. Plasma **does** have
+  a non-wifi RP2350 (Plasma 2350), so it keeps `plasma-rp2350` (pico2) and gains
+  `plasma-rp2350w` (pico2_w) when a 2350W is on hand. Matrix: **i75 → rp2040 +
+  rp2350w; plasma → rp2040 + rp2350 (+ rp2350w later).**
+- **CYW43 stability — DECIDED: `poll` mode + current SDK.** The reported CYW43/LWIP
+  lockups have three known causes, all now addressed:
+  1. **PIO-SPI write bug** on RP2350 (pico-sdk #2206) — *fixed & present in our SDK*.
+  2. **Multicore-lockout not cleared on core reset** — *fixed & present in our SDK*
+     (`multicore_lockout_victim_deinit`).
+  3. **`threadsafe_background` + LWIP IRQ reentrancy** (LWIP `NO_SYS` isn't
+     IRQ-safe; background services it from an IRQ → corruption under load, #1079) —
+     *avoided* by using `pico_cyw43_arch_lwip_poll` and calling `cyw43_arch_poll()`
+     from the command loop next to `transport.poll()` (we're single-core, on-demand).
+  The earlier `i75w-multicast` prototype patched #1/#2 by hand and used background
+  mode; we inherit the fixes and use poll. Init CYW43 early; keep the SDK current.
+  Residual risk is empirical → **S7.1 includes a soak test** on the i75w.
+- **Prior art:** `~/emma/pico/i75w-multicast` is a working i75w multicast prototype —
+  a reusable reference for `lwipopts.h` (IGMP/multicast), the WiFi connect (auth
+  fallback WPA3-SAE → WPA2), and the multicast UDP listener. Port to poll mode +
+  our command core / k/v store rather than copying wholesale.
 - **Credentials:** SSID/passphrase storage — likely k/v keys (note: 64-byte value
   limit; a passphrase fits, an enterprise cert does not). Security of stored
   creds is an open question.
