@@ -106,11 +106,15 @@ by offset, so a lost chunk is just a gap at a known place.
   back buffer for a flip — the hook **S7.4** drives with a multicast sync flip.
 
 **Acceptance criteria**
-- [ ] Board joins the `mgroup`/`mport` multicast group from the k/v store (W builds).
-- [ ] A chunked multicast frame reassembles by offset into `display::back()`; complete
-  frames present (respecting `hold`/`live`), incomplete frames are dropped.
-- [ ] Verified on the i75w: a frame multicast from the host renders; loss shows the prior
-  frame, not corruption.
+- [x] Board joins the `mgroup`/`mport` group from the k/v store (`igmp_joingroup`, W builds).
+- [x] A chunked frame reassembles by offset into `display::back()` and presents (respecting
+  `hold`/`live`); a new `frame_id` abandons an incomplete one. Verified on both i75w's via
+  the identical receive path — the socket is bound `IP_ANY:mport`, so unicast `MVF1` frames
+  drive it too (green→board 1, red→board 2).
+- [ ] True one-to-many **multicast delivery** + loss behaviour — pending a **flat network**.
+  On the bench the sender and two boards landed on three different subnets (`.4`/`.13`/`.15`),
+  and multicast doesn't route across L3 boundaries on an IoT LAN. Needs all devices on one
+  subnet / L2 segment (dumb switch or an AP without client isolation) to demo.
 
 ### S7.4 — Synchronised flip ([#35](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/35))
 *As an operator, I want all boards to show the new frame at the same time.*
