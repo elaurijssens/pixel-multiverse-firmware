@@ -1,6 +1,6 @@
 # E8 — Firmware update
 
-**Phase:** 3 (mode command) → 4 (embedded, provisional) · **Depends on:** E1 (command core), E4 (chip-family images) · **Unlocks:** —
+**Phase:** 3 (mode command) → 4 (embedded, provisional) · **Depends on:** E1 (command core), E9 (per-board-chip images + identity) · **Unlocks:** —
 
 ## Goal
 
@@ -35,9 +35,15 @@ Two things motivate a dedicated epic:
 ### S8.2 — Report firmware identity & version ([#38](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/38))
 *As host tooling, I want to query the board's chip family, board type, and firmware build id so that I can select the correct UF2 and avoid flashing the wrong image.*
 **Acceptance criteria**
-- [ ] A command returns at least: chip family (RP2040/RP2350), board type (from the E2 k/v store), and a firmware build/version id.
+- [x] A command returns at least: chip family + board type (the `board-chip` id, e.g.
+  `i75-rp2350`) and a firmware build/version id — the **`vers`** command also reports
+  display geometry + buffer size.
 - [x] The build id is derived at compile time (e.g. git describe / version constant) and is stable per build.
-- [ ] Output format is documented for host-side consumption.
+- [x] Output format documented (u16 length-prefixed ASCII `key=value` lines; see
+  `kv_commands.cpp` / `multiverse-config.py`). Surfaced by `multiverse-ctl.sh diag`.
+
+*Delivered by the diagnostics work — `vers` command + `diag` tool. (The k/v store dump
+`keys` came along with it.)*
 
 **Groundwork done** (side-step, commit `16264d7`): the build id already exists.
 `CMakeLists.txt` derives it from `git describe --tags --always --dirty` and
