@@ -1,4 +1,4 @@
-name: CMake
+name: Build firmware
 
 on:
   push:
@@ -7,42 +7,40 @@ on:
     types: [created]
 
 env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
 
 jobs:
   build:
-    name: ${{matrix.board}}
+    # One image per board × chip. The chip family is chosen by PICO_BOARD
+    # (pico → rp2040, pico2 → rp2350), which is exactly how the bench build
+    # (tools/multiverse-ctl.sh flash) selects it, so CI reproduces it.
+    name: ${{ matrix.board }}-${{ matrix.chip }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - board: galactic
-          - board: cosmic
-          - board: stellar
-          - board: i75
+          - { board: i75, chip: rp2040, pico_board: pico }
+          - { board: i75, chip: rp2350, pico_board: pico2 }
+          # Plasma joins here once E10 lands src/display/plasma:
+          # - { board: plasma, chip: rp2040,  pico_board: pico }
+          # - { board: plasma, chip: rp2350, pico_board: pico2_w }
 
     runs-on: ubuntu-latest
 
-    env:
-      PICO_SDK_PATH: $GITHUB_WORKSPACE/pico-sdk
-      PIMORONI_PICO_LIBS: $GITHUB_WORKSPACE/pimoroni-pico
-      RELEASE_FILE: ${{matrix.board}}-${{github.event.repository.name}}-${{github.event.release.tag_name || github.sha}}
-
     steps:
-    - name: Checkout Code
+    - name: Checkout code
       uses: actions/checkout@v4
       with:
         path: project
+        fetch-depth: 0   # full history + tags so `git describe` stamps the version
 
-    # Checkout the Pimoroni Pico Libraries
-    - name: Checkout Pimoroni Pico Libraries
+    - name: Checkout Pimoroni Pico libraries
       uses: actions/checkout@v4
       with:
         repository: pimoroni/pimoroni-pico
         ref: main
         path: pimoroni-pico
 
-    # Checkout the Pico SDK
     - name: Checkout Pico SDK
       uses: actions/checkout@v4
       with:
@@ -51,46 +49,43 @@ jobs:
         path: pico-sdk
         submodules: true
 
-    - name: Install Arm GNU Toolchain (arm-none-eabi-gcc)
+    - name: Install Arm GNU toolchain (arm-none-eabi-gcc)
       uses: carlosperate/arm-none-eabi-gcc-action@v1
       with:
         release: '13.3.Rel1'
 
-    - name: Create Build Environment
-      run: cmake -E make_directory ${{runner.workspace}}/build
-
-    - name: Configure CMake
+    - name: Configure
       shell: bash
-      working-directory: ${{runner.workspace}}/build
-      run: cmake $GITHUB_WORKSPACE/project -DMULTIVERSE_BOARD=${{matrix.board}} -DCMAKE_BUILD_TYPE=$BUILD_TYPE -DCPACK_PACKAGE_FILE_NAME=${{env.RELEASE_FILE}} -DPIMORONI_PICO_PATH=$GITHUB_WORKSPACE/pimoroni-pico -DPICO_SDK_PATH=$GITHUB_WORKSPACE/pico-sdk -DPICO_BOARD=pico_w -DCMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/install
+      run: >
+        cmake -S "$GITHUB_WORKSPACE/project" -B "$GITHUB_WORKSPACE/build"
+        -DMULTIVERSE_BOARD=${{ matrix.board }}
+        -DPICO_BOARD=${{ matrix.pico_board }}
+        -DCMAKE_BUILD_TYPE=$BUILD_TYPE
+        -DPIMORONI_PICO_PATH="$GITHUB_WORKSPACE/pimoroni-pico"
+        -DPICO_SDK_PATH="$GITHUB_WORKSPACE/pico-sdk"
 
     - name: Build
-      working-directory: ${{runner.workspace}}/build
+      shell: bash
+      run: cmake --build "$GITHUB_WORKSPACE/build" --config $BUILD_TYPE -j 2
+
+    - name: Version-stamp the image (board-chip-multiverse-<version>.uf2)
+      id: stamp
       shell: bash
       run: |
-        cmake --build . --config $BUILD_TYPE -j 2
+        version="$(git -C "$GITHUB_WORKSPACE/project" describe --tags --always --dirty)"
+        name="${{ matrix.board }}-${{ matrix.chip }}-multiverse-${version}"
+        cp "$GITHUB_WORKSPACE/build/${{ matrix.board }}-multiverse.uf2" \
+           "$GITHUB_WORKSPACE/${name}.uf2"
+        echo "name=${name}" >> "$GITHUB_OUTPUT"
 
-    - name: Store .uf2 as artifact
+    - name: Upload build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: ${{env.RELEASE_FILE}}.uf2
-        path: ${{runner.workspace}}/build/${{matrix.board}}-multiverse.uf2
+        name: ${{ steps.stamp.outputs.name }}
+        path: ${{ github.workspace }}/${{ steps.stamp.outputs.name }}.uf2
 
-    - name: Build Release Packages
-      if: github.event_name == 'release'
-      working-directory: ${{runner.workspace}}/build
-      shell: bash
-      run: |
-        cmake --build . --config $BUILD_TYPE --target package -j 2
-
-    - name: Upload .zip
+    - name: Attach image to release
       if: github.event_name == 'release'
       uses: softprops/action-gh-release@v2
       with:
-        files: ${{runner.workspace}}/build/${{env.RELEASE_FILE}}.zip
-
-    - name: Upload .tar.gz
-      if: github.event_name == 'release'
-      uses: softprops/action-gh-release@v2
-      with:
-        files: ${{runner.workspace}}/build/${{env.RELEASE_FILE}}.tar.gz
+        files: ${{ github.workspace }}/${{ steps.stamp.outputs.name }}.uf2

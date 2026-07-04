@@ -100,16 +100,15 @@ target_link_libraries(${NAME}
 # create map/bin/hex file etc.
 pico_add_extra_outputs(${NAME})
 
-# Set up files for the release packages
+# Release bundle: just the firmware image + docs. CI (.github/workflows/cmake.yml)
+# attaches the version-stamped .uf2 to releases directly; CPack is kept so a
+# `--target package` still yields a self-contained zip/tgz. The legacy upstream
+# Python examples are intentionally not packaged (superseded by the separate
+# pixel-multiverse host driver, and slated for removal).
 install(FILES
     ${CMAKE_CURRENT_BINARY_DIR}/${NAME}.uf2
     ${CMAKE_CURRENT_LIST_DIR}/README.md
     ${CMAKE_CURRENT_LIST_DIR}/LICENSE
-    ${CMAKE_CURRENT_LIST_DIR}/99-fire.rules
-    ${CMAKE_CURRENT_LIST_DIR}/examples/life.py
-    ${CMAKE_CURRENT_LIST_DIR}/examples/multi_fire.py
-    ${CMAKE_CURRENT_LIST_DIR}/examples/multi_matrix.py
-    ${CMAKE_CURRENT_LIST_DIR}/examples/multi_synth.py
     DESTINATION .
 )
 

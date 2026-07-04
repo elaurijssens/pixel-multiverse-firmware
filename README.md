@@ -1,94 +1,51 @@
-# Galactic Unicorn: Multiverse
+# pixel-multiverse firmware
 
-A firmware and Python library/examples for driving multiple Galactic Unicorn displays as a single display from a host computer.
+C++/Pico SDK firmware for Pimoroni LED display boards. A host streams pixel
+buffers over USB serial and the board renders them; the canonical host driver is
+the separate [pixel-multiverse](https://github.com/elaurijssens/pixel-multiverse)
+Python package.
 
-## Using Multiverse
+Supported boards:
 
-Flash `galactic-multiverse.uf2` to each Galactic Unicorn you want to use.
+- **Interstate 75 / 75W** (Hub75 matrix) — `i75`
+- **Plasma** (WS2812 strip) — `plasma` *(in progress, see epic E10)*
 
-Follow the udev guide below to give each a unique alias, use `/dev/serial/by-id` or hope that the `/dev/ttyACMx` nodes assigned automatically don't mess up your layout.
+## Images: one per board × chip
 
-### Running Examples
+The firmware is built **per board, at compile time** (`MULTIVERSE_BOARD`), for
+both RP2040 and RP2350 chip families. CI
+([`.github/workflows/cmake.yml`](.github/workflows/cmake.yml)) builds the full
+matrix and, on each GitHub release, attaches a version-stamped image per target:
 
-From the examples directory, run:
+| Image | Board | Chip | Flash to |
+|-------|-------|------|----------|
+| `i75-rp2040-multiverse-<version>.uf2`  | Interstate 75  | RP2040 | Interstate 75 |
+| `i75-rp2350-multiverse-<version>.uf2`  | Interstate 75W | RP2350 | Interstate 75W |
 
-```
-PYTHONPATH=../lib python3 multi_fire.py
-```
+Plasma images (`plasma-rp2040`, `plasma-rp2350w`) join the matrix when E10 lands.
 
-You can install the multiverse lib to avoid having to specify `PYTHONPATH`.
+Pick the image matching your board's chip family, then drop the board into
+BOOTSEL/UF2 mode and copy the `.uf2` onto the mounted drive. The board reports
+its identity (e.g. `i75-rp2350`) in its USB Product string and on its boot
+screen, so you can confirm the right image is running.
 
-### Getting Started
+## Building locally
 
-Set up your displays like so:
+CMake + the [Pico SDK](https://github.com/raspberrypi/pico-sdk). Set
+`PICO_SDK_PATH` to your checkout; select the board with `MULTIVERSE_BOARD` and
+the chip with `PICO_BOARD` (`pico` → RP2040, `pico2` → RP2350):
 
-```python
-from multiverse import Multiverse, Display
-
-display = Multiverse(
-    #       Serial Port,       W,  H,  X,  Y
-    Display("/dev/Fire-Alice", 53, 11, 0, 0),  # /dev/ttyACMx, udev rule alias or /dev/serial/by-id/usb-Pimoroni_Multiverse_XXXXXXXXXXXXXXXX-if00
-    Display("/dev/Fire-James", 53, 11, 0, 11),
-    Display("/dev/Fire-Susan", 53, 11, 0, 22),
-)
-
-display.setup()
-```
-
-To update the displays call `display.update(buffer)`.
-
-It expects a 3d numpy array with a 4 byte (32bit) RGBx value for each pixel.
-
-It must be wide enough to accomodate your displays and their offsets.
-
-```python
-buffer = numpy.random.rand(HEIGHT, WIDTH, BYTES_PER_PIXEL) * 255
-display.update(buffer.astype(numpy.uint8))
+```bash
+# i75, RP2350 (Interstate 75W)
+MULTIVERSE_BOARD=i75 cmake -DPICO_SDK_PATH="$PICO_SDK_PATH" -DPICO_BOARD=pico2 \
+  -G Ninja -S . -B cmake-build-debug-rp2350
+cmake --build cmake-build-debug-rp2350
 ```
 
-### Using /dev/serial/by-id
+The output is `${board}-multiverse.uf2` in the build tree.
 
-You might need this patch: https://raw.githubusercontent.com/yuwata/systemd/5286da064c97d2ac934cb301066aaa8605a3c8f9/rules.d/60-serial.rules
-
-Each board has a unique name/ID based on its serial number. For example:
-
-```
-/dev/serial/by-id/usb-Pimoroni_Multiverse_E6614864D3853334-if00
-```
-
-You should see them listed if you run:
-
-```
-ls /dev/serial/by-id
-```
-
-### UDev Rules (or, avoiding your displays getting all messed-up like)
-
-See `99-fire.rules` for an example.
-
-Each board should have a unique `iSerial`.
-
-Connect your boards, either one at a time or all together and find their unique IDs with:
-
-```
-sudo lsusb -v -d0xcafe: | grep iSerial
-```
-
-Plug these into `99-fire.rules`, adding additional entries as necessary.
-
-Give your boards friendly names or numbers or whatever makes sense to you.
-
-Copy your rules into `/etc/udev/rules.d/`:
-
-```
-sudo cp 99-fire.rules /etc/udev/rules.d/
-```
-
-Reload udev's rules:
-
-```
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-```
-
-And you should see your new friendly names in `/dev`.
+`tools/multiverse-ctl.sh` drives a connected board (reset, self-test, image
+send, config, panel dimensions) and has a `flash` subcommand that rebuilds,
+archives a version-stamped image under `dist/`, flashes over BOOTSEL, and runs a
+self-test to confirm the board came back healthy. See
+[`CLAUDE.md`](CLAUDE.md) for the build, wire protocol, and bench workflow.
