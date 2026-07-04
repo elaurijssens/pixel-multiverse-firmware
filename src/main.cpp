@@ -36,6 +36,7 @@
 #include "config/kv_commands.hpp"
 #include "net/wifi.hpp"
 #include "net/udp_transport.hpp"
+#include "net/multicast.hpp"
 #include "recovery/recovery.hpp"
 
 // UART0 for Picoprobe debug
@@ -55,6 +56,7 @@ int main(void) {
     kv::register_commands(); // put/get/del, before run() registers the built-ins
     net::wifi_init();        // W images only: connect if `wifi` enabled (no-op otherwise)
     net::udp_transport_init(); // bind the UDP command socket (W builds, if wifi up)
+    net::multicast_init();     // join the multicast frame group (E7 S7.3)
 
     command_core::UsbCdcTransport transport;
     command_core::run(transport, net::udp_transport());  // USB + (on W) UDP

@@ -17,6 +17,7 @@
 #include "command/transport.hpp"
 #include "config/kv_flash.hpp"
 #include "net/wifi.hpp"
+#include "net/multicast.hpp"
 
 using namespace pimoroni;
 
@@ -243,7 +244,12 @@ void run(Transport& transport, Transport* secondary) {
 
     while (1) {
         transport.poll();
-        net::wifi_poll();  // CYW43 poll (poll mode): also fills the UDP buffer; no-op on non-W
+        net::wifi_poll();  // CYW43 poll (poll mode): fills UDP/multicast buffers; no-op on non-W
+
+        // Present a completed multicast frame (S7.3); honour hold/live (E6).
+        if (net::multicast_take_frame() && !deferred) {
+            display::update();
+        }
 
         if (transport.wait_for("multiverse:", primary_to)) {
             dispatch_from(transport);

@@ -55,6 +55,7 @@ add_executable(${NAME}
     ${SRC_DIR}/config/kv_commands.cpp
     ${SRC_DIR}/net/wifi.cpp
     ${SRC_DIR}/net/udp_transport.cpp
+    ${SRC_DIR}/net/multicast.cpp
     ${SRC_DIR}/recovery/recovery.cpp
     ${SRC_DIR}/cdc_uart.cpp
     ${SRC_DIR}/get_serial.cpp
