@@ -42,11 +42,14 @@ convenient everyday path.
 *As a board owner, I want to force a factory reset by holding a button during early startup, so a config that prevents boot — or a board that won't accept USB — can still be recovered.*
 - [x] `src/recovery` samples the reset button **before `kv::config_boot()`** in `main()`
 - [x] Held (active-low, ~300 ms) → erase the config region before it's read, so a bad config can't re-brick
-- [x] Per-board pin: plasma **SW_A (GPIO 12)**; i75 **SW_A (GPIO 14)** identified. Verified on the
-  Plasma 2350: holding SW_A across a reboot wipes config; a normal reboot preserves it.
-- [ ] Enable + hardware-verify the i75 button (GPIO 14) — deferred (avoid a wrong-pin spurious wipe;
-  the i75w is mid soak-test)
-- [ ] Explicit "reset happened" indication after boot (currently just boots to defaults)
+- [x] Per-board pin: plasma **SW_A (GPIO 12)**; i75 **SW_A (GPIO 14)**. Verified on the
+  Plasma 2350 and the i75w: holding SW_A across a reboot wipes config; a normal reboot preserves it.
+- [x] Enable + hardware-verify the i75 button (GPIO 14) — wired via CMake (`MULTIVERSE_RESET_BTN=14`;
+  GPIO 14 is a dedicated button, not a Hub75 output — Hub75 uses 0–13/16–18, see
+  `docs/reference/board-pins.md`). Verified on the i75w: holding SW_A across a reboot wiped a
+  populated config store to `(store empty)` → booted on defaults; a normal reboot preserves it.
+- [x] Explicit "reset happened" indication after boot — `check_factory_reset()` returns whether it
+  erased; `main()` shows **"config reset"** on the display after `init()`. Confirmed on hardware.
 
 ## Technical notes
 
