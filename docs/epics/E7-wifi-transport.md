@@ -88,9 +88,29 @@ flag), and double buffering (E6) for the load-then-flip pattern.
 
 ### S7.3 — Multicast frame distribution ([#34](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/34))
 *As an operator, I want to send one frame to many boards at once.*
+
+Raw multicast UDP is lossy and unackable (one sender → many boards), so frames use a
+**self-describing chunk protocol**, not the S7.2 byte-stream (where one lost datagram
+desyncs everything). Each datagram carries a header + chunk; the receiver places chunks
+by offset, so a lost chunk is just a gap at a known place.
+
+- **Subscribe:** join an IPv4 multicast group (IGMP) — `mgroup` (e.g. `239.255.0.1`) +
+  `mport` from the k/v store; a separate `udp_pcb` from the S7.2 command socket.
+- **Frame chunk** (little-endian): `magic(4) frame_id(2) flags(2) total_len(4) offset(4)`
+  header + chunk bytes. Receiver writes each chunk into `display::back()` at `offset`,
+  tracks bytes received for the current `frame_id`; `received == total_len` ⇒ complete.
+- **Best-effort:** a new `frame_id` before the old completes abandons the incomplete
+  frame (never shown). With E6 double-buffering the previous complete frame stays up —
+  no tearing, no stale-repair (right for real-time animation).
+- **Present** reuses E6: on completion, `live` flips immediately; `hold` leaves it in the
+  back buffer for a flip — the hook **S7.4** drives with a multicast sync flip.
+
 **Acceptance criteria**
-- [ ] Boards subscribe to a multicast group (configurable via k/v).
-- [ ] A multicast frame loads into each board's back buffer (E6).
+- [ ] Board joins the `mgroup`/`mport` multicast group from the k/v store (W builds).
+- [ ] A chunked multicast frame reassembles by offset into `display::back()`; complete
+  frames present (respecting `hold`/`live`), incomplete frames are dropped.
+- [ ] Verified on the i75w: a frame multicast from the host renders; loss shows the prior
+  frame, not corruption.
 
 ### S7.4 — Synchronised flip ([#35](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/35))
 *As an operator, I want all boards to show the new frame at the same time.*
