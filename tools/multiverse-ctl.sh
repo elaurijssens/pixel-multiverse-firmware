@@ -261,12 +261,20 @@ flash() {
   sync
 
   # 6. Wait for the board to re-enumerate as a serial port, then self-test.
+  #    Target the board we actually flashed: when a device was named, wait for THAT
+  #    port to reappear (it drops off the bus during BOOTSEL and comes back after the
+  #    reboot). Grabbing first_port instead would, with several boards attached, pick a
+  #    different board that never rebooted — sending the self-test to the wrong screen.
   echo -n "==> waiting for board to re-enumerate"
   local port=""
   for i in $(seq 1 30); do
-    port="$(first_port)"
-    [ -n "$port" ] && [ -e "$port" ] && break
-    port=""
+    if [ -n "$device" ]; then
+      [ -e "$device" ] && { port="$device"; break; }
+    else
+      port="$(first_port)"
+      [ -n "$port" ] && [ -e "$port" ] && break
+      port=""
+    fi
     echo -n "."; sleep 1
   done
   echo

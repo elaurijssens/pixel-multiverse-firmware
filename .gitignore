@@ -11,5 +11,10 @@ lib/dist
 lib/build
 *.egg-info
 
-# rights-encumbered local test asset — must not be published
+# local editor/agent state
+.claude/
+
+# large / rights-encumbered local test assets — must not be published
 tools/samples/animated2.gif
+tools/samples/animated3.gif
+tools/samples/sample2.mp4

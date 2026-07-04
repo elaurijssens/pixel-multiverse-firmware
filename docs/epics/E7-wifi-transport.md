@@ -115,20 +115,52 @@ by offset, so a lost chunk is just a gap at a known place.
   animation in sync from a single sender and both stayed fully responsive throughout
   (raw diag). (An earlier apparent "hang" was a test-harness artifact — false-negative
   responsiveness checks + the display holding the last frame + a board on an older build.)
-- [ ] True one-to-many **multicast delivery** (one packet → many) — pending a **flat
-  network**. On the bench the sender and boards landed on three different subnets
-  (`.4`/`.13`/`.15`) and multicast doesn't route across L3 on an IoT LAN; verified instead
-  via **unicast to each board** (identical receive path). Needs all devices on one subnet /
-  L2 segment (dumb switch or AP without client isolation) for the single-packet demo.
+- [x] True one-to-many **multicast delivery** (one packet → many) — **verified on a flat
+  segment.** The IoT SSID is one `192.168.12.0/22` L2 segment (netmask `255.255.252.0`), not
+  the per-client /24s it looked like: the sender (`.14.186`) and both boards (`.15.147`,
+  `.13.174`) share it and resolve each other via ARP on the same interface. A single
+  multicast sender to `239.255.0.1:54322` drove **both** boards to the same solid colour
+  together. (The earlier "different subnets, doesn't route" call was a /24 misread — at /22
+  the `.12`–`.15` ranges are one subnet.)
+  **Caveat — lossy:** raw multicast drops chunks, so an individual frame often fails to
+  complete (a single red/green/blue cycle held on the last complete frame); reliable
+  animation needs **redundant sends** or the S7.4 sync/flip layer. Verified by repeating a
+  frame ~25× — both boards then held solid green.
 
 **Hardening from the investigation:** lwIP uses fixed pools (no libc-malloc fragmentation
 under per-datagram pbuf churn); a command-loop watchdog is in as a safety net.
 
 ### S7.4 — Synchronised flip ([#35](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/35))
 *As an operator, I want all boards to show the new frame at the same time.*
+
+**Mechanism.** The MVF1 header's `flags` field gains a **FLIP bit** (`0x0001`): a datagram
+with FLIP set and no payload tells every board to present its back buffer. Host pattern:
+`hold` each board → unicast each its frame slice → send one **multicast FLIP** to the group,
+so a single packet flips a whole wall. Two safeguards: a **completion gate** (a flip only
+presents a *fully-received* frame — a partial/mid-load buffer is held, never torn) and a
+**redundant flip** (sent a few times, since multicast is unacked). A companion **zlib frame
+flag** (`0x0002`) shrinks frames ~6× (host `zlib.compress` → board `uncompress` into back()),
+and the receiver **dedups chunk offsets** so a frame can be sent 2× for loss resilience.
+
 **Acceptance criteria**
-- [ ] A sync signal flips all subscribed boards' buffers together.
-- [ ] Visible skew across boards is within an acceptable, documented bound.
+- [x] A sync signal flips all subscribed boards' buffers together. Verified: `hold` both
+  boards, unicast a solid colour to each, one multicast FLIP → both snap to it together.
+- [x] Visible skew across boards is within an acceptable, documented bound **for low-rate
+  synchronised content**. **Bound (measured, documented below): the multicast flip suits
+  slideshow / periodic-update walls, not per-frame video.**
+
+**Finding — flip is for low-rate sync; use live mode for video.** Instrumented the receiver
+(`mframes`/`mdrop`/`mflip_ok`/`mflip_gate`, exposed via `diag`) and streamed a 256×128 h264
+clip at 24 fps split across two i75w. Results: **0 air loss** (`mdrop=0`), decompress ~14 ms,
+but in **flip (hold) mode only ~15 fps actually present** — ~30 % of flips are *gated*
+because a completed frame's flip lands after the **next** frame has begun overwriting the
+back buffer (a load-then-separate-flip race that widens with frame rate). A bigger guard made
+it *worse*, and unicast-vs-multicast flip barely moved it — so it is neither decompression nor
+AP/DTIM latency. In **live mode** (present on completion, no flip) the same clip presents the
+full **24 fps, 0 drops**, over immediate unicast, with only a few-ms host send-order skew.
+**So: `multiverse-wall.py` streams video in live mode (`--no-sync`); the multicast sync flip
+is reserved for low-rate synchronised presentation.** Host tooling (compression, redundancy,
+per-frame deadline pacing, still-frame re-send, video via ffmpeg) lives in `tools/multiverse-wall.py`.
 
 ## Out of scope (for now)
 

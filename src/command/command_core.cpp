@@ -178,7 +178,7 @@ void handle_live(command_core::Transport& transport) {
 // Diagnostics / E8 S8.2: report firmware identity + geometry as a u16
 // length-prefixed ASCII blob ("key=value\n" lines). Read by `multiverse-ctl diag`.
 void handle_vers(command_core::Transport& transport) {
-    static char buf[256];
+    static char buf[320];
     int n = snprintf(buf, sizeof(buf),
                      "board=%s\nversion=%s\ndisplay=%dx%d\nbufsize=%u\n",
                      MULTIVERSE_BOARD_ID, MULTIVERSE_VERSION,
@@ -189,6 +189,14 @@ void handle_vers(command_core::Transport& transport) {
         n += snprintf(buf + n, sizeof(buf) - n, "wifi=%s\nip=%s\n",
                       net::wifi_connected() ? "connected" : "connecting",
                       net::wifi_ip());
+        uint32_t mf = 0, md = 0, mdus = 0, fok = 0, fgate = 0;
+        net::multicast_stats(mf, md, mdus);
+        net::multicast_flip_stats(fok, fgate);
+        n += snprintf(buf + n, sizeof(buf) - n,
+                      "mframes=%u\nmdrop=%u\nmdmax_us=%u\nmflip_ok=%u\nmflip_gate=%u\n",
+                      static_cast<unsigned>(mf), static_cast<unsigned>(md),
+                      static_cast<unsigned>(mdus), static_cast<unsigned>(fok),
+                      static_cast<unsigned>(fgate));
     }
     if (n > static_cast<int>(sizeof(buf))) n = static_cast<int>(sizeof(buf));
     uint8_t hdr[2] = { static_cast<uint8_t>(n & 0xff), static_cast<uint8_t>((n >> 8) & 0xff) };
@@ -249,6 +257,11 @@ void run(Transport& transport, Transport* secondary) {
 
         // Present a completed multicast frame (S7.3); honour hold/live (E6).
         if (net::multicast_take_frame() && !deferred) {
+            display::update();
+        }
+        // S7.4 synced flip: a multicast FLIP datagram presents the loaded back buffer
+        // on every board together (used with `hold` + unicast frame slices).
+        if (net::multicast_take_flip()) {
             display::update();
         }
 
