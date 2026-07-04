@@ -33,17 +33,20 @@ convenient everyday path.
 
 ### S12.1 — Factory-reset command over USB ([#57](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/57))
 *As a board owner, I want a command that clears the persistent config back to factory defaults, so I can recover from bad config without a full reflash.*
-- [ ] A system command clears the k/v store (erase config flash region / empty the store)
-- [ ] Display shows a clear "factory reset" state, then reboots into defaults
-- [ ] Exposed via `multiverse-ctl.sh` (a `factory`/`reset-config` subcommand)
-- [ ] Verified on hardware: board boots with default config after reset (confirm via `diag`)
+- [x] The `_fac` system command clears the k/v store (erases the config flash region)
+- [x] Display shows "factory reset", then reboots into defaults
+- [x] Exposed via `multiverse-ctl.sh factory`
+- [x] Verified on the Plasma 2350: store goes empty, board boots at default length 64 (via `diag`)
 
 ### S12.2 — Clear config on button-held-at-boot (recovery) ([#58](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/58))
 *As a board owner, I want to force a factory reset by holding a button during early startup, so a config that prevents boot — or a board that won't accept USB — can still be recovered.*
-- [ ] Sample a button **before the config is read/applied** (i75 A/B; plasma SW_A pin 12 / USER_SW pin 22)
-- [ ] If held, erase the config flash region before it is loaded, so a bad config can't re-brick
-- [ ] Clear indication that a reset happened
-- [ ] Per-board button + pin documented; verified on hardware (hold at power-on → boots to defaults)
+- [x] `src/recovery` samples the reset button **before `kv::config_boot()`** in `main()`
+- [x] Held (active-low, ~300 ms) → erase the config region before it's read, so a bad config can't re-brick
+- [x] Per-board pin: plasma **SW_A (GPIO 12)**; i75 **SW_A (GPIO 14)** identified. Verified on the
+  Plasma 2350: holding SW_A across a reboot wipes config; a normal reboot preserves it.
+- [ ] Enable + hardware-verify the i75 button (GPIO 14) — deferred (avoid a wrong-pin spurious wipe;
+  the i75w is mid soak-test)
+- [ ] Explicit "reset happened" indication after boot (currently just boots to defaults)
 
 ## Technical notes
 
