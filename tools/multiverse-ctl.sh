@@ -11,7 +11,10 @@
 #   multiverse-ctl.sh set KEY VAL [device] Set a config key             (multiverse:put )
 #   multiverse-ctl.sh get KEY [device]     Read a config key            (multiverse:get )
 #   multiverse-ctl.sh del KEY [device]     Delete a config key          (multiverse:del )
-#   multiverse-ctl.sh dims WxH [device]    Set panel size, reboot, verify (test 42)
+#   multiverse-ctl.sh dims WxH [device]    Single panel (1x1), reboot, verify (test 42)
+#   multiverse-ctl.sh layout PWxPH CxR [chain] [device]
+#                                          Multi-panel grid, reboot, verify (test 60).
+#                                          chain: raster-td|serpentine-td|raster-bu|serpentine-bu
 #   multiverse-ctl.sh flash [NN] [device]  Build, version-stamp, flash, then self-test
 #   multiverse-ctl.sh list                 List detected Multiverse ports
 #
@@ -57,7 +60,7 @@ if [ -z "${MV_PYTHON:-}" ] && [ -x "$REPO_ROOT/.venv/bin/python" ]; then
 fi
 
 usage() {
-  sed -n '3,43p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '3,47p' "$0" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
 }
 
@@ -270,54 +273,87 @@ flash() {
   echo "==> done: ${board} @ ${version}"
 }
 
-# Set panel width+height in the config store, reboot so the new geometry takes
-# effect (the framebuffer + hub75 driver are built once in init(), so dimensions
-# are read only at boot), then show test 42 to eyeball it (border flush to the
-# edges + "WxH" text). Firmware clamps width to 16..256 and height to 16..64
-# (hub75 scans at most 64 rows); we pre-validate to fail fast.
-dims() {
-  local spec="${1:-}" device="${2:-$(first_port)}"
-  local w="${spec%%x*}" h="${spec##*x}"
-  if ! printf '%s' "$w" | grep -qE '^[0-9]+$' || ! printf '%s' "$h" | grep -qE '^[0-9]+$'; then
-    echo "error: dims needs WxH, e.g. 256x64 (got '${spec}')." >&2
-    exit 1
-  fi
-  if [ "$w" -lt 16 ] || [ "$w" -gt 256 ] || [ "$h" -lt 16 ] || [ "$h" -gt 64 ]; then
-    echo "error: width must be 16..256 and height 16..64 (got ${w}x${h})." >&2
-    exit 1
-  fi
-  if [ -z "$device" ]; then
-    echo "error: no Multiverse serial port found." >&2
-    echo "       plug the board in, or pass the device explicitly. Detected ports:" >&2
-    detect_ports | sed 's/^/         /' >&2
-    exit 1
-  fi
+# Panel geometry (E11). The firmware reads panel/layout/display and a chain order
+# from the k/v store once at boot, so any change needs a reboot to take effect.
+# `dims` is the single-panel shortcut; `layout` sets a multi-panel grid. Both
+# pre-validate against the firmware's constraints to fail fast, set the keys,
+# reboot, and show a self-test to eyeball the result.
 
-  echo "==> setting width=${w} height=${h}"
-  config_cmd set "$device" width  "$w"
-  config_cmd set "$device" height "$h"
+# Known chain orders — must match the firmware's parse_chain().
+_valid_chain() {
+  case "$1" in raster-td|serpentine-td|raster-bu|serpentine-bu) return 0 ;; *) return 1 ;; esac
+}
 
+# Validate panel + layout; on success sets DW/DH (display) globals. Exits on error.
+_geom_validate() {
+  local pw="$1" ph="$2" cols="$3" rows="$4" v
+  for v in "$pw" "$ph" "$cols" "$rows"; do
+    printf '%s' "$v" | grep -qE '^[0-9]+$' || { echo "error: dimensions must be integers (got '$v')." >&2; exit 1; }
+  done
+  [ "$pw" -ge 8 ] && [ "$pw" -le 256 ] || { echo "error: panel width must be 8..256 (got $pw)." >&2; exit 1; }
+  { [ "$ph" -ge 8 ] && [ "$ph" -le 64 ] && [ $((ph % 2)) -eq 0 ]; } || \
+    { echo "error: panel height must be even and 8..64 — hub75 scans ≤ 64 rows (got $ph)." >&2; exit 1; }
+  { [ "$cols" -ge 1 ] && [ "$rows" -ge 1 ]; } || { echo "error: layout must be at least 1x1 (got ${cols}x${rows})." >&2; exit 1; }
+  DW=$((pw * cols)); DH=$((ph * rows))
+  [ $((DW * DH)) -le 16384 ] || { echo "error: display ${DW}x${DH} = $((DW*DH)) px exceeds the 16384 px buffer." >&2; exit 1; }
+}
+
+# Set the geometry keys, reboot, and wait for re-enumeration. Sets GEOM_PORT.
+# Args: device pw ph cols rows chain dw dh
+_geom_apply() {
+  local device="$1" pw="$2" ph="$3" cols="$4" rows="$5" chain="$6" dw="$7" dh="$8" i p
+  echo "==> panel ${pw}x${ph} · layout ${cols}x${rows} → display ${dw}x${dh} · chain ${chain}"
+  config_cmd set "$device" panel_w  "$pw"
+  config_cmd set "$device" panel_h  "$ph"
+  config_cmd set "$device" panels_x "$cols"
+  config_cmd set "$device" panels_y "$rows"
+  config_cmd set "$device" disp_w   "$dw"
+  config_cmd set "$device" disp_h   "$dh"
+  config_cmd set "$device" chain    "$chain"
   echo "==> rebooting to apply"
   send "_rst" "$device"
-
   echo -n "==> waiting for board to re-enumerate"
-  local port="" i
+  GEOM_PORT=""
   for i in $(seq 1 30); do
-    port="$(first_port)"
-    [ -n "$port" ] && [ -e "$port" ] && break
-    port=""
+    p="$(first_port)"
+    [ -n "$p" ] && [ -e "$p" ] && { GEOM_PORT="$p"; break; }
     echo -n "."; sleep 1
   done
   echo
-  if [ -z "$port" ]; then
-    echo "warning: board did not re-enumerate in time." >&2
-    echo "         once it's back, run: $(basename "$0") test 42" >&2
-    exit 1
+}
+
+# dims WxH [device] — single panel (1×1 layout); shows the dimensions test (42).
+dims() {
+  local spec="${1:-}" device="${2:-$(first_port)}"
+  case "$spec" in *x*) : ;; *) echo "error: dims needs WxH, e.g. 256x64 (got '${spec}')." >&2; exit 1 ;; esac
+  _geom_validate "${spec%%x*}" "${spec##*x}" 1 1
+  [ -n "$device" ] || { echo "error: no Multiverse serial port found (plug in or pass a device)." >&2; exit 1; }
+  _geom_apply "$device" "${spec%%x*}" "${spec##*x}" 1 1 raster-td "$DW" "$DH"
+  if [ -z "$GEOM_PORT" ]; then
+    echo "warning: board did not re-enumerate; once back, run: $(basename "$0") test 42" >&2; exit 1
   fi
-  sleep 1  # let the CDC endpoint settle before writing
+  sleep 1  # let the CDC endpoint settle
   echo "==> showing dimensions (test 42)"
-  send "test42" "$port"
-  echo "==> done: ${w}x${h}"
+  send "test42" "$GEOM_PORT"
+  echo "==> done: ${DW}x${DH}"
+}
+
+# layout PWxPH COLSxROWS [chain] [device] — multi-panel grid; shows the layout map (60).
+layout() {
+  local panel="${1:-}" grid="${2:-}" chain="${3:-raster-td}" device="${4:-$(first_port)}"
+  case "$panel" in *x*) : ;; *) echo "error: layout needs PWxPH COLSxROWS, e.g. 128x64 1x2 (got panel '${panel}')." >&2; exit 1 ;; esac
+  case "$grid"  in *x*) : ;; *) echo "error: layout needs PWxPH COLSxROWS, e.g. 128x64 1x2 (got layout '${grid}')." >&2; exit 1 ;; esac
+  _valid_chain "$chain" || { echo "error: chain must be raster-td|serpentine-td|raster-bu|serpentine-bu (got '${chain}')." >&2; exit 1; }
+  _geom_validate "${panel%%x*}" "${panel##*x}" "${grid%%x*}" "${grid##*x}"
+  [ -n "$device" ] || { echo "error: no Multiverse serial port found (plug in or pass a device)." >&2; exit 1; }
+  _geom_apply "$device" "${panel%%x*}" "${panel##*x}" "${grid%%x*}" "${grid##*x}" "$chain" "$DW" "$DH"
+  if [ -z "$GEOM_PORT" ]; then
+    echo "warning: board did not re-enumerate; once back, run: $(basename "$0") test 60" >&2; exit 1
+  fi
+  sleep 1  # let the CDC endpoint settle
+  echo "==> showing layout map (test 60)"
+  send "test60" "$GEOM_PORT"
+  echo "==> done: ${grid} of ${panel} → ${DW}x${DH} (${chain})"
 }
 
 case "${1:-}" in
@@ -332,6 +368,7 @@ case "${1:-}" in
   get) config_cmd get "${3:-$(first_port)}" "${2:-}" ;;
   del) config_cmd del "${3:-$(first_port)}" "${2:-}" ;;
   dims) dims "${2:-}" "${3:-}" ;;
+  layout) layout "${2:-}" "${3:-}" "${4:-}" "${5:-}" ;;
   flash) flash "${2:-20}" "${3:-}" ;;
   list|ls)
     ports="$(detect_ports)"
