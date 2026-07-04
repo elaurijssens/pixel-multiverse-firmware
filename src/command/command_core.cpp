@@ -225,29 +225,34 @@ bool register_command(const char id[COMMAND_LEN], Handler handler) {
     return true;
 }
 
-void run(Transport& transport) {
+// Read a command id from `t` and dispatch it. Assumes the framing prefix was
+// just matched on `t`.
+void dispatch_from(Transport& t) {
+    if (t.read(command_buffer, COMMAND_LEN) != COMMAND_LEN) return;
+    Handler handler = lookup(command_buffer);
+    if (handler != nullptr) handler(t);
+    // Unknown/garbage id: no handler — re-sync on the next `multiverse:` prefix.
+}
+
+void run(Transport& transport, Transport* secondary) {
     register_builtins();
+
+    // With a secondary (network) transport, wait on the primary with a short
+    // timeout so datagrams get serviced promptly; otherwise keep the original 1s.
+    const uint32_t primary_to = (secondary != nullptr) ? 5 : 1000;
 
     while (1) {
         transport.poll();
-        net::wifi_poll();  // service CYW43 + lwIP (poll mode); no-op on non-W builds
+        net::wifi_poll();  // CYW43 poll (poll mode): also fills the UDP buffer; no-op on non-W
 
-        if(!transport.wait_for("multiverse:")) {
-            //display::info("mto");
-            continue; // Couldn't get the framing prefix
-        }
-
-        if(transport.read(command_buffer, COMMAND_LEN) != COMMAND_LEN) {
-            //display::info("cto");
+        if (transport.wait_for("multiverse:", primary_to)) {
+            dispatch_from(transport);
             continue;
         }
-
-        Handler handler = lookup(command_buffer);
-        if (handler != nullptr) {
-            handler(transport);
+        // Non-blocking check of the network transport's already-received bytes.
+        if (secondary != nullptr && secondary->wait_for("multiverse:", 0)) {
+            dispatch_from(*secondary);
         }
-        // Unknown/garbage id: no handler — fall through and re-sync on the
-        // next `multiverse:` prefix.
     }
 }
 

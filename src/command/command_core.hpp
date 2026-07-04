@@ -22,6 +22,10 @@ bool register_command(const char id[4], Handler handler);
 //
 // The loop depends only on the Transport interface (S1.2) — USB CDC and, later,
 // WiFi (E7) plug in without changing the core.
-void run(Transport& transport);
+//
+// `secondary` (e.g. the UDP transport, E7 S7.2) is serviced alongside the primary;
+// pass nullptr for USB-only. A command from either transport dispatches to the same
+// handlers, and its handler reads its payload from the transport it arrived on.
+void run(Transport& transport, Transport* secondary = nullptr);
 
 } // namespace command_core

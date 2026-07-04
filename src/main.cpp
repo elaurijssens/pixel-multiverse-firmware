@@ -35,6 +35,7 @@
 #include "config/kv_flash.hpp"
 #include "config/kv_commands.hpp"
 #include "net/wifi.hpp"
+#include "net/udp_transport.hpp"
 #include "recovery/recovery.hpp"
 
 // UART0 for Picoprobe debug
@@ -53,9 +54,10 @@ int main(void) {
     display::init();         // reads panel dimensions from the config store
     kv::register_commands(); // put/get/del, before run() registers the built-ins
     net::wifi_init();        // W images only: connect if `wifi` enabled (no-op otherwise)
+    net::udp_transport_init(); // bind the UDP command socket (W builds, if wifi up)
 
     command_core::UsbCdcTransport transport;
-    command_core::run(transport);
+    command_core::run(transport, net::udp_transport());  // USB + (on W) UDP
 
     return 0;
 }
