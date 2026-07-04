@@ -1,56 +1,32 @@
-# Board pin maps & wrong-driver safety
+# Board pin maps
 
-> **v0.1.0 reshape:** the supported boards are now **i75 + Plasma only** (Unicorns
-> dropped), and each image links **one** driver at compile time — so the wrong-driver
-> case is largely designed out. The Unicorn tables/rows below are **historical**
-> (kept for reference); the live concern is the small **i75 ↔ Plasma** pin overlap
-> and the switch caveat.
+GPIO assignments for the supported boards — **Interstate 75 / 75W** (Hub75) and
+**Plasma** (WS2812/APA102). Since each firmware image links **one** display driver at
+compile time, you can't select the wrong driver, so the historic "wrong-driver"
+hazard is designed out. What remains is a small **i75 ↔ Plasma** pin overlap and a
+switch caveat.
 
-GPIO assignments per board, and what happens if the firmware runs the **wrong**
-display driver for the attached hardware.
+Source: the Pimoroni C++ drivers this firmware builds against — `drivers/hub75`,
+`drivers/plasma` (`ws2812`/`apa102`), `libraries/plasma{_stick,2040}`.
 
-Source: the Pimoroni C++ drivers this firmware builds against — `libraries/{galactic,
-cosmic,stellar}_unicorn/*.hpp`, `drivers/hub75/hub75.hpp`, `drivers/plasma/ws2812.hpp`,
-`libraries/plasma{_stick,2040}/*.hpp`.
+## ⚠️ Switch caveat
 
-## ⚠️ DO NOT OPERATE THE PHYSICAL SWITCHES / BUTTONS
-
-On unified firmware (E4), or any time the configured `board` might not match the
-attached hardware, **do not press the board's buttons/switches.** Each board wires
-its switches to GPIOs that *another* board's driver uses as **push-pull outputs**.
-A switch shorts its pin to ground when pressed; if a mismatched driver is holding
-that pin HIGH, pressing the switch shorts a driven output to ground and stresses the
-GPIO pad. Worst case: the **Hub75 (i75) driver drives GPIO 0–13**, which are **six of
-the Unicorn's button pins** (A/B/C/D/Vol±). The firmware never reads the buttons, so
-you lose nothing by leaving them alone.
+The firmware never reads the board buttons. The only way to get in trouble is to
+flash the *wrong board's* image onto hardware (e.g. an i75 image on a Plasma): a
+driver output can then land on a switch-to-ground pin, and pressing that switch
+briefly shorts a driven GPIO. Flash the matching `board-chip` image and it's a
+non-issue.
 
 ## Chip family
 
 | Board | Chip | Driver |
 |---|---|---|
-| Galactic Unicorn | RP2040 | shift-register column scan |
-| Cosmic Unicorn | RP2040 | shift-register column scan |
-| Stellar Unicorn | RP2350 | shift-register column scan |
 | Interstate 75 | RP2040 | Hub75 |
 | Interstate 75 W | RP2350 | Hub75 |
 | Plasma 2040 / Stick | RP2040 | WS2812 / APA102 |
 | Plasma 2350 W | RP2350 | WS2812 / APA102 |
 
 ## Pin maps
-
-### Unicorns — Galactic / Cosmic / Stellar (identical pinout)
-
-| Signal | GPIO | | Signal | GPIO |
-|---|---|---|---|---|
-| COLUMN_CLOCK | 13 | | I2S_DATA | 9 |
-| COLUMN_DATA | 14 | | I2S_BCLK | 10 |
-| COLUMN_LATCH | 15 | | I2S_LRCLK | 11 |
-| COLUMN_BLANK | 16 | | MUTE | 22 |
-| ROW_BIT_0..3 | 17–20 | | LIGHT_SENSOR | 28 (ADC) |
-| **SWITCH_A/B/C/D** | **0 / 1 / 3 / 6** | | **VOL_UP/DOWN** | **7 / 8** |
-| **SLEEP** | **27** | | **BRIGHT_UP/DOWN** | **21 / 26** |
-
-Boards differ only in `ROW_COUNT` (Galactic 11, Cosmic/Stellar 16) and panel geometry.
 
 ### Interstate 75 / 75 W — Hub75
 
@@ -71,36 +47,14 @@ Boards differ only in `ROW_COUNT` (Galactic 11, Cosmic/Stellar 16) and panel geo
 | Plasma 2040 only: **BUTTON_A/B** | **12 / 13** |
 | Plasma 2040 only: USER_SW / LED R,G,B / CURRENT_SENSE | 23 / 16,17,18 / 29 (ADC) |
 
-## Wrong-driver collision analysis
+## i75 ↔ Plasma overlap
 
-A mismatched driver drives its own pins with its own protocol. Output-vs-output
-overlaps are harmless (garbage/flicker). The hazard is a driver **output** landing on
-another board's **switch-to-ground input**:
+Shared GPIOs (only relevant under a wrong-image flash): **14** (i75 `SW_A` button vs
+Plasma APA102 `CLK`), **15** (Plasma `DATA`; unused by Hub75), **12/13** (Hub75
+`STB`/`OE` vs Plasma 2040 buttons), **16–18** (both drive the onboard LED), **23**
+(both `USER_SW`). Plasma-driven images only wiggle 1–2 pins, so they're the safest
+mismatch; a Hub75 image on a Plasma drives the button pins — hence the caveat above.
 
-| Active driver → attached board | Driven onto switch pins | Risk |
-|---|---|---|
-| **Hub75 → Unicorn** | 0,1,3,6,7,8 = SWITCH A/B/C/D + Vol± | ⚠️ six buttons short-to-GND if pressed |
-| **Hub75 → Plasma 2040** | 12,13 = BUTTON_A/B | ⚠️ two buttons |
-| **Unicorn → i75** | 14 = SW_A | ⚠️ one button |
-| **Unicorn → Plasma 2040** | 13 = BUTTON_B | ⚠️ one button |
-| **Plasma (WS2812) → anything** | drives only DAT(15) | ✓ harmless (1 pin) |
-
-No instant damage — RP2040/RP2350 pads current-limit at their drive strength — but a
-held short is not something to allow in normal operation. Hence the switch warning
-above, and the driver-selection rules below.
-
-## Driver-selection safety (E3 / E4)
-
-1. **Per-image driver allow-list (S3.3):** the descriptor may only select a board
-   whose driver is *linked into the current image*. Cross-family (RP2040 ↔ RP2350)
-   selection is therefore impossible; within a family, an out-of-set `board` value
-   fails safe.
-2. **A family image has no safe default driver.** Boards in one family use
-   *conflicting* pins, so the firmware cannot guess which hardware it is on. When
-   `board` is unset or invalid in a family image, the safe behaviour is **bring up no
-   display driver** — leave the pins high-impedance (inputs), render nothing, and wait
-   for the owner to set `board` over USB (the config commands work without a display).
-   This is E2's principle in action: *the owner configures the board; the firmware does
-   not auto-detect.*
-3. **Per-board images (today)** link exactly one driver, so the descriptor's fallback
-   `= multiverse::BOARD` is always the attached hardware and safe to bring up.
+> **Historical (pre-v0.1.0):** earlier versions also supported the Unicorn boards,
+> whose shift-register/audio pins (0–8, 13–22) overlapped these much more heavily
+> (a Hub75 image drove six Unicorn button pins). Retired with the Unicorns.
