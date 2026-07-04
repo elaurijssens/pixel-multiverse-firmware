@@ -50,6 +50,10 @@ config store, self-test) is reused unchanged.
 
 ## Technical notes
 
+- Strip-native self-tests (`selftest.hpp` `7x`, plasma-rendered): `70` spectrum,
+  `71` decade markers, `72` endpoints (length check without counting). The generic
+  matrix patterns mostly degenerate on a 1-tall strip; the `0x` fills and `2x`
+  column patterns (ramp / alternating / half) still apply.
 - Only WS2812 for the first cut; APA102 (Plasma 2040's `CLK=14`) can follow.
 - A serpentine/grid layout mapping is out of scope until a matrix board is on the
   bench — the strip case is linear.
