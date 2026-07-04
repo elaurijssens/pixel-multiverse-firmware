@@ -61,14 +61,17 @@ flag), and double buffering (E6) for the load-then-flip pattern.
 ### S7.1 — WiFi bring-up ([#32](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/32))
 *As a board owner, I want a W board to join my network when WiFi is enabled in config.*
 **Acceptance criteria**
-- [ ] A separate `…-rp2350w` image (`PICO_BOARD=pico2_w`) links `pico_cyw43_arch` +
-  lwIP in **poll** mode; non-W images are unchanged. Added to the CI matrix.
-- [ ] On a W image with `wifi=1` + `ssid`/`pass` k/v keys, the board connects;
-  `cyw43_arch_poll()` runs from the command loop next to `transport.poll()`.
-- [ ] WiFi unset/disabled (or no CYW43) ⇒ behaves exactly as a non-WiFi board.
-- [ ] Connection status queryable — extend `vers`/`diag` with WiFi state + IP.
+- [x] A separate `i75-rp2350w` image (`PICO_BOARD=pico2_w`) links `pico_cyw43_arch` +
+  lwIP in **poll** mode; non-W images unchanged. Green in CI.
+- [x] On a W image with `wifi=1` + `ssid`/`pass`, the board connects (async);
+  `cyw43_arch_poll()` runs from the command loop. Verified: i75w associates + pulls a
+  DHCP lease, non-blocking.
+- [x] WiFi unset/disabled (or no CYW43) ⇒ behaves as a non-WiFi board (early return
+  before `cyw43_arch_init`; non-W images compile no-op stubs).
+- [x] Connection status via `vers`/`diag` (state + IP). Secret keys (`pass`) masked
+  in the `keys` dump.
 - [ ] **Soak test:** WiFi associated and serviced over an extended run without lockup
-  (the CYW43 stability check).
+  (initial stability good across reflashes + queries; long soak still to run).
 
 ### S7.2 — Commands over the network ([#33](https://github.com/elaurijssens/pixel-multiverse-firmware/issues/33))
 *As a host, I want to send the same commands over WiFi as over USB.*
