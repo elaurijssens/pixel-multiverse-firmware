@@ -75,8 +75,14 @@ void handle_del(Transport& t) {
     write_u8(t, ok ? 1 : 0);
 }
 
+// Secret keys whose value must never be dumped in the clear (e.g. WiFi password).
+bool is_secret_key(const char* key, size_t klen) {
+    return klen == 4 && key[0] == 'p' && key[1] == 'a' && key[2] == 's' && key[3] == 's';
+}
+
 // Diagnostics: dump the live store as a u16 length-prefixed ASCII blob, one
-// "key=value" line per record. Non-printable value bytes render as '.'.
+// "key=value" line per record. Non-printable value bytes render as '.'; secret
+// keys (e.g. `pass`) are masked so the dump never leaks credentials.
 void handle_keys(Transport& t) {
     static char buf[2560];
     size_t pos = 0;
@@ -85,9 +91,14 @@ void handle_keys(Transport& t) {
         const Record& r = config().at(i);
         for (size_t k = 0; k < r.key_len && pos < sizeof(buf); k++) buf[pos++] = r.key[k];
         if (pos < sizeof(buf)) buf[pos++] = '=';
-        for (size_t v = 0; v < r.value_len && pos < sizeof(buf); v++) {
-            uint8_t c = r.value[v];
-            buf[pos++] = (c >= 0x20 && c < 0x7f) ? static_cast<char>(c) : '.';
+        if (is_secret_key(r.key, r.key_len)) {
+            const char* masked = (r.value_len > 0) ? "<hidden>" : "";
+            for (size_t j = 0; masked[j] && pos < sizeof(buf); j++) buf[pos++] = masked[j];
+        } else {
+            for (size_t v = 0; v < r.value_len && pos < sizeof(buf); v++) {
+                uint8_t c = r.value[v];
+                buf[pos++] = (c >= 0x20 && c < 0x7f) ? static_cast<char>(c) : '.';
+            }
         }
         if (pos < sizeof(buf)) buf[pos++] = '\n';
     }

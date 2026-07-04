@@ -34,6 +34,7 @@
 #include "command/usb_cdc_transport.hpp"
 #include "config/kv_flash.hpp"
 #include "config/kv_commands.hpp"
+#include "net/wifi.hpp"
 
 // UART0 for Picoprobe debug
 // UART1 for picoprobe to target device
@@ -49,6 +50,7 @@ int main(void) {
     kv::config_boot();       // load persisted config from flash first (formats on first use)
     display::init();         // reads panel dimensions from the config store
     kv::register_commands(); // put/get/del, before run() registers the built-ins
+    net::wifi_init();        // W images only: connect if `wifi` enabled (no-op otherwise)
 
     command_core::UsbCdcTransport transport;
     command_core::run(transport);

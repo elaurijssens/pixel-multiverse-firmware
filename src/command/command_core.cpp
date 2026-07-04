@@ -15,6 +15,7 @@
 
 #include "command/command_core.hpp"
 #include "command/transport.hpp"
+#include "net/wifi.hpp"
 
 using namespace pimoroni;
 
@@ -171,6 +172,11 @@ void handle_vers(command_core::Transport& transport) {
                      display::width(), display::height(),
                      static_cast<unsigned>(display::buffer_size()));
     if (n < 0) n = 0;
+    if (net::wifi_enabled() && n < static_cast<int>(sizeof(buf))) {
+        n += snprintf(buf + n, sizeof(buf) - n, "wifi=%s\nip=%s\n",
+                      net::wifi_connected() ? "connected" : "connecting",
+                      net::wifi_ip());
+    }
     if (n > static_cast<int>(sizeof(buf))) n = static_cast<int>(sizeof(buf));
     uint8_t hdr[2] = { static_cast<uint8_t>(n & 0xff), static_cast<uint8_t>((n >> 8) & 0xff) };
     transport.write(hdr, 2);
@@ -211,6 +217,7 @@ void run(Transport& transport) {
 
     while (1) {
         transport.poll();
+        net::wifi_poll();  // service CYW43 + lwIP (poll mode); no-op on non-W builds
 
         if(!transport.wait_for("multiverse:")) {
             //display::info("mto");
