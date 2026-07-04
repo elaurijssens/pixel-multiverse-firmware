@@ -9,6 +9,11 @@ on:
 env:
   BUILD_TYPE: Release
 
+# The release job uploads UF2 assets to the GitHub release, which needs write
+# access to repo contents (the default GITHUB_TOKEN is read-only).
+permissions:
+  contents: write
+
 jobs:
   build:
     # One image per board × chip. The chip family is chosen by PICO_BOARD
